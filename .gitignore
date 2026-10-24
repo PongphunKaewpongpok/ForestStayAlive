@@ -1,0 +1,12 @@
+# Unreal Engine generated files
+Binaries/
+Intermediate/
+DerivedDataCache/
+Saved/
+.vs/
+.idea/
+.vscode/
+
+# JetBrains Rider
+.idea/
+*.DotSettings.user
