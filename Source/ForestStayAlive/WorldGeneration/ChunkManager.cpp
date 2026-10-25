@@ -113,6 +113,9 @@ void AChunkManager::SpawnChunk(const FIntPoint ChunkCoord)
 
 		Chunk->GenerateTerrain();
 		
+		// Generate General Structure (Abandoned Campsite and more..)
+		Chunk->GenerateStructures(StructuresList);
+		
 		// Generate General Object (Trees, Rocks and more..)
 		Chunk->GenerateObject(Structure_Forest);
 

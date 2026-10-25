@@ -73,6 +73,8 @@ public:
 	
 	UPROPERTY(Category="Structures", EditDefaultsOnly)
 	TObjectPtr<UStructureData> Structure_Forest;
+	UPROPERTY(Category="Structures", EditDefaultsOnly)
+	TArray<TObjectPtr<UStructureData>> StructuresList;
 
 protected:
 	// Called when the game starts or when spawned

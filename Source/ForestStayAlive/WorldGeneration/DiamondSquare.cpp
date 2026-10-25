@@ -12,6 +12,25 @@
 #include "MeshSpawnData.h"
 #include "StructureData.h"
 
+bool ADiamondSquare::IsObjectCollision(const FVector& Position, const float Radius) const
+{
+	if (!GetWorld()) return true;
+
+	FCollisionObjectQueryParams ObjectQueryParams;
+	ObjectQueryParams.AddObjectTypesToQuery(ECC_GameTraceChannel2);
+
+	FCollisionQueryParams QueryParams;
+	QueryParams.AddIgnoredActor(this);
+
+	return GetWorld()->OverlapAnyTestByObjectType(
+		Position,
+		FQuat::Identity,
+		ObjectQueryParams,
+		FCollisionShape::MakeSphere(Radius),
+		QueryParams
+	);
+}
+
 // Sets default values
 /*
 
@@ -276,9 +295,22 @@ void ADiamondSquare::GenerateWaterTerrain()
     ProceduralMesh->SetMaterial(1, WaterMaterial);
 }
 
-void ADiamondSquare::GenerateStructures()
+void ADiamondSquare::GenerateStructures(const TArray<UStructureData*>& StructuresList)
 {
+	if (StructuresList.IsEmpty()) return;
 	
+	FRandomStream Stream;
+	const int32 ChunkSeed = GetChunkSeed(100);
+	Stream.Initialize(ChunkSeed);
+	
+	const int32 Index = Stream.RandRange(0, StructuresList.Num()-1);
+	
+	UStructureData* StructureData = StructuresList[Index];
+	if (!StructureData) return;
+	
+	if (Stream.FRand() > StructuresList[Index]->Chance) return;
+	
+	GenerateObject(StructureData);
 }
 
 
@@ -306,41 +338,77 @@ void ADiamondSquare::GenerateObject(const UStructureData* StructureData)
 			}
 			CurrentSpawnCount++;
 			
-			int32 X = Stream.RandRange(0, VertexCount);
-			int32 Y = Stream.RandRange(0, VertexCount);
+			
+			const int32 MaxAttempts = 30;
+			bool bFoundValidPosition = false;
 
-			int32 Index = X + Y * (VertexCount + 1);
-			if (!Vertices.IsValidIndex(Index)) continue;
-		
-			if (OwnerChunkManager->RoadGenerator->IsRoadCollision(GetActorLocation()+Vertices[Index], ChunkCoord, 100.0f)) continue;
-		
-			const float Height = Vertices[Index].Z;
-			if (Height < MeshData->MinHeight || Height > MeshData->MaxHeight) continue;
+			int32 Index = INDEX_NONE;
+			FVector Position = FVector::ZeroVector;
+			FVector WorldPosition = FVector::ZeroVector;
 
-		
-			const float Slope = FMath::RadiansToDegrees(FMath::Acos(FMath::Clamp(Normals[Index].Z, -1.f, 1.f)));
-			if (Slope < MeshData->MinSlope || Slope > MeshData->MaxSlope) continue;
+			for (int32 Attempt = 0; Attempt < MaxAttempts; ++Attempt)
+			{
+			    const int32 X = Stream.RandRange(0, VertexCount);
+			    const int32 Y = Stream.RandRange(0, VertexCount);
 
-		
-			FVector Position = Vertices[Index];
+			    const int32 CandidateIndex = X * (VertexCount + 1) + Y;
+
+			    if (!Vertices.IsValidIndex(CandidateIndex) || !Normals.IsValidIndex(CandidateIndex)) continue;
+
+			    const FVector CandidatePosition = Vertices[CandidateIndex];
+			    const FVector CandidateWorldPosition = GetActorTransform().TransformPosition(CandidatePosition);
+
+			    if (OwnerChunkManager && OwnerChunkManager->RoadGenerator && OwnerChunkManager->RoadGenerator->IsRoadCollision(CandidateWorldPosition, ChunkCoord, 100.0f)) continue;
+
+			    const float Height = CandidatePosition.Z;
+			    if (Height < MeshData->MinHeight || Height > MeshData->MaxHeight) continue;
+
+			    const float Slope = FMath::RadiansToDegrees(
+			        FMath::Acos(
+			            FMath::Clamp(Normals[CandidateIndex].Z, -1.0f, 1.0f)
+			        )
+			    );
+
+			    if (Slope < MeshData->MinSlope || Slope > MeshData->MaxSlope)  continue;
+			    if (IsObjectCollision(CandidateWorldPosition)) continue;
+
+			    Index = CandidateIndex;
+			    Position = CandidatePosition;
+			    WorldPosition = CandidateWorldPosition;
+			    bFoundValidPosition = true;
+			    break;
+			}
+
+			if (!bFoundValidPosition) continue;
+
 			FRotator Rotation = FRotator::ZeroRotator;
-			Rotation.Yaw = Stream.FRandRange(0.f, 360.f);
+			Rotation.Yaw = Stream.FRandRange(0.0f, 360.0f);
 
+			const float ObjectScale = Stream.FRandRange(
+			    MeshData->MinScale,
+			    MeshData->MaxScale
+			);
 
-			const float ObjectScale = Stream.FRandRange(MeshData->MinScale, MeshData->MaxScale);
-		
 			FTransform Transform;
 			Transform.SetLocation(Position);
 			Transform.SetRotation(Rotation.Quaternion());
 			Transform.SetScale3D(FVector(ObjectScale));
-		
-		
-			int32 MeshIndex = Stream.RandRange(0, MeshData->Meshes.Num() - 1);
+
+			const int32 MeshIndex = Stream.RandRange(
+			    0, MeshData->Meshes.Num() - 1
+			);
+
 			UStaticMesh* Mesh = MeshData->Meshes[MeshIndex];
-			UHierarchicalInstancedStaticMeshComponent* HISM = GetOrCreateHISM(Mesh);
-		
-			if (!HISM) continue;
+			UHierarchicalInstancedStaticMeshComponent* HISM =
+			    GetOrCreateHISM(Mesh);
+
+			if (!HISM)
+			{
+			    continue;
+			}
+
 			HISM->AddInstance(Transform);
+
 		}
 	}
 }
@@ -499,6 +567,9 @@ UHierarchicalInstancedStaticMeshComponent* ADiamondSquare::GetOrCreateHISM(UStat
 	NewHISM->SetupAttachment(ProceduralMesh);
 	NewHISM->RegisterComponent();
 	NewHISM->SetStaticMesh(Mesh);
+	
+	NewHISM->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	NewHISM->SetCollisionObjectType(ECC_GameTraceChannel2);
 
 	HISMMap.Add(Mesh, NewHISM);
 

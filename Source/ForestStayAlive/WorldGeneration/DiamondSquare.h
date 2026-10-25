@@ -21,6 +21,8 @@ UCLASS()
 class FORESTSTAYALIVE_API ADiamondSquare : public AActor
 {
 	GENERATED_BODY()
+protected:
+	bool IsObjectCollision(const FVector& Position, const float Radius = 100.0f) const;
 	
 public:	
 	// Sets default values for this actor's properties
@@ -88,7 +90,7 @@ public:
 	
 	
 	UFUNCTION(BlueprintCallable)
-	void GenerateStructures();
+	void GenerateStructures(const TArray<UStructureData*>& StructuresList);
 	UFUNCTION(BlueprintCallable)
 	void GenerateObject(const UStructureData* StructureData);
 	

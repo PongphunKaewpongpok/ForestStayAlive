@@ -5,10 +5,10 @@ Working List:
 - Generation
   - [x] Terrain Generator
   - [x] Road Generator
-  - [ ] Structure Generator
-  - [ ] Water Generator
+  - [x] Structure Generator
+  - [x] Water Generator
 - Mechanics
-  - [ ] Running System
+  - [x] Running System
   - [ ] The Discovery Book
 - AI
   - [ ] เสือสมิง (Weretiger)
