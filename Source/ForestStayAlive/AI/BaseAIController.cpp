@@ -25,7 +25,7 @@ ABaseAIController::ABaseAIController()
 	SightConfig->LoseSightRadius = 1500.f;
 	SightConfig->PeripheralVisionAngleDegrees = 60.f;
 	SightConfig->DetectionByAffiliation.bDetectNeutrals = true;
-	GetPerceptionComponent()->ConfigureSense(*SightConfig);
+	AAIController::GetPerceptionComponent()->ConfigureSense(*SightConfig);
 	
 	HearingConfig = CreateDefaultSubobject<UAISenseConfig_Hearing>(TEXT("Hearing"));
 	HearingConfig->HearingRange = 3000.f;
@@ -34,13 +34,13 @@ ABaseAIController::ABaseAIController()
 	HearingConfig->DetectionByAffiliation.bDetectEnemies = true;
 	HearingConfig->DetectionByAffiliation.bDetectNeutrals = true;
 	HearingConfig->DetectionByAffiliation.bDetectFriendlies = true;
-	GetPerceptionComponent()->ConfigureSense(*HearingConfig);
+	AAIController::GetPerceptionComponent()->ConfigureSense(*HearingConfig);
 	
 	DamageConfig = CreateDefaultSubobject<UAISenseConfig_Damage>(TEXT("Damage"));
 	DamageConfig->SetMaxAge(8.f);
-	GetPerceptionComponent()->ConfigureSense(*DamageConfig);
+	AAIController::GetPerceptionComponent()->ConfigureSense(*DamageConfig);
 
-	GetPerceptionComponent()->SetDominantSense(SightConfig->GetSenseImplementation());
+	AAIController::GetPerceptionComponent()->SetDominantSense(SightConfig->GetSenseImplementation());
 }
 
 void ABaseAIController::OnPossess(APawn* InPawn)

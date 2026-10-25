@@ -114,10 +114,7 @@ void AChunkManager::SpawnChunk(const FIntPoint ChunkCoord)
 		Chunk->GenerateTerrain();
 		
 		// Generate General Object (Trees, Rocks and more..)
-		if (GeneralObjectSpawnCount > 0)
-		{
-			Chunk->GenerateObject(FSpawnObjectLibrary::GetSpawnObjects_Forest(), GeneralObjectSpawnCount);
-		}
+		Chunk->GenerateObject(Structure_Forest);
 
 		LoadedChunks.Add(ChunkCoord, Chunk);
 	}

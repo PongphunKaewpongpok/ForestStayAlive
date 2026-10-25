@@ -11,6 +11,7 @@
 #include "DiamondSquare.generated.h"
 
 
+class UStructureData;
 class UProceduralMeshComponent;
 class UMaterialInterface;
 class UHierarchicalInstancedStaticMeshComponent;
@@ -89,7 +90,7 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void GenerateStructures();
 	UFUNCTION(BlueprintCallable)
-	void GenerateObject(const TArray<FSpawnObjectData>& SpawnObjects, const int SpawnCount);
+	void GenerateObject(const UStructureData* StructureData);
 	
 
 	

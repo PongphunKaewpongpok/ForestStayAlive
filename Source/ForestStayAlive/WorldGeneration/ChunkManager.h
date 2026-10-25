@@ -34,8 +34,6 @@ public:
 	UPROPERTY(EditAnywhere, Meta = (ClampMin = "0.000001"))
 	float UVScale;
 	
-	UPROPERTY(EditAnywhere, Meta = (ClampMin = "0"))
-	int32 GeneralObjectSpawnCount;
 	
 	UPROPERTY(EditAnywhere)
 	UMaterialInterface* Material;
@@ -72,6 +70,9 @@ public:
 	float RoadWidth;
 	UPROPERTY(Category="Road", EditAnywhere, Meta = (EditCondition="bHasRoad", EditConditionHides, ClampMin="2"))
 	int8 RoadPointsPerChunk = 2;
+	
+	UPROPERTY(Category="Structures", EditDefaultsOnly)
+	TObjectPtr<UStructureData> Structure_Forest;
 
 protected:
 	// Called when the game starts or when spawned

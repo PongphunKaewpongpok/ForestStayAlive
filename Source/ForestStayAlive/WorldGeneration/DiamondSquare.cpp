@@ -7,9 +7,10 @@
 #include "Components/HierarchicalInstancedStaticMeshComponent.h"
 
 #include "FastNoiseLite.h"
-#include "SpawnObjectData.h"
 #include "RoadGenerator.h"
 #include "ChunkManager.h"
+#include "MeshSpawnData.h"
+#include "StructureData.h"
 
 // Sets default values
 /*
@@ -249,7 +250,7 @@ void ADiamondSquare::GenerateWaterTerrain()
 		Vertex.Z = WaterLevel;
 	}
 	
-	if (!hWater) { return; }
+	if (!hWater) return;
 
 	WaterTriangles.Append(Triangles);
 	WaterUV.Append(UV0);
@@ -280,57 +281,45 @@ void ADiamondSquare::GenerateStructures()
 	
 }
 
-void ADiamondSquare::GenerateObject(const TArray<FSpawnObjectData>& SpawnObjects, const int SpawnCount)
+
+void ADiamondSquare::GenerateObject(const UStructureData* StructureData)
 {
+	if (!IsValid(StructureData)) return;
+	
 	FRandomStream Stream;
 	const int32 ChunkSeed = GetChunkSeed(100);
 	Stream.Initialize(ChunkSeed);
 	
-	
-	const int32 TotalChance = FSpawnObjectLibrary::GetTotalChance(SpawnObjects);
-	
-	for (int32 _ = 0; _ < SpawnCount; _++)
+	for (const UMeshSpawnData* MeshData : StructureData->MeshSpawnDatas)
 	{
-		float Random = Stream.FRandRange(0.f, TotalChance);
-
-		const FSpawnObjectData* SelectedData = nullptr;
-
-		float Current = 0.f;
-		for (const FSpawnObjectData& Data : SpawnObjects)
+		if (MeshData->Meshes.IsEmpty()) continue;
+		
+		const int32 Count = Stream.RandRange(MeshData->MinCount, MeshData->MaxCount);
+		int32 CurrentSpawnCount = 0;
+		for (int32 i = 0; i < Count; i++)
 		{
-			Current += Data.Chance;
+			const int32 RemainingAttempts = Count - i;
 
-			if (Random <= Current)
+			if (const int32 NeededCount = MeshData->MinCount - CurrentSpawnCount; RemainingAttempts > NeededCount)
 			{
-				SelectedData = &Data;
-				break;
+				if (Stream.FRand() > MeshData->Chance) continue;
 			}
-		}
-
-		if (!SelectedData) { continue; }
-		if (SelectedData->Meshes.IsEmpty()) { continue; }
-		
-		
-		
-		for (int32 i = 0; i < SelectedData->Count; i++)
-		{
+			CurrentSpawnCount++;
+			
 			int32 X = Stream.RandRange(0, VertexCount);
 			int32 Y = Stream.RandRange(0, VertexCount);
 
 			int32 Index = X + Y * (VertexCount + 1);
-			if (!Vertices.IsValidIndex(Index)) { continue; }
+			if (!Vertices.IsValidIndex(Index)) continue;
 		
-			if (OwnerChunkManager->RoadGenerator->IsRoadCollision(GetActorLocation()+Vertices[Index], ChunkCoord, 100.0f)) { continue; }
+			if (OwnerChunkManager->RoadGenerator->IsRoadCollision(GetActorLocation()+Vertices[Index], ChunkCoord, 100.0f)) continue;
 		
 			const float Height = Vertices[Index].Z;
-			if (Height < SelectedData->MinHeight || Height > SelectedData->MaxHeight) { continue; }
+			if (Height < MeshData->MinHeight || Height > MeshData->MaxHeight) continue;
 
 		
-			const float Slope =
-				FMath::RadiansToDegrees(
-					FMath::Acos(FMath::Clamp(Normals[Index].Z, -1.f, 1.f))
-				);
-			if (Slope < SelectedData->MinSlope || Slope > SelectedData->MaxSlope) { continue; }
+			const float Slope = FMath::RadiansToDegrees(FMath::Acos(FMath::Clamp(Normals[Index].Z, -1.f, 1.f)));
+			if (Slope < MeshData->MinSlope || Slope > MeshData->MaxSlope) continue;
 
 		
 			FVector Position = Vertices[Index];
@@ -338,7 +327,7 @@ void ADiamondSquare::GenerateObject(const TArray<FSpawnObjectData>& SpawnObjects
 			Rotation.Yaw = Stream.FRandRange(0.f, 360.f);
 
 
-			const float ObjectScale = Stream.FRandRange(SelectedData->MinScale, SelectedData->MaxScale);
+			const float ObjectScale = Stream.FRandRange(MeshData->MinScale, MeshData->MaxScale);
 		
 			FTransform Transform;
 			Transform.SetLocation(Position);
@@ -346,11 +335,11 @@ void ADiamondSquare::GenerateObject(const TArray<FSpawnObjectData>& SpawnObjects
 			Transform.SetScale3D(FVector(ObjectScale));
 		
 		
-			int32 MeshIndex = Stream.RandRange(0, SelectedData->Meshes.Num() - 1);
-			UStaticMesh* Mesh = SelectedData->Meshes[MeshIndex];
+			int32 MeshIndex = Stream.RandRange(0, MeshData->Meshes.Num() - 1);
+			UStaticMesh* Mesh = MeshData->Meshes[MeshIndex];
 			UHierarchicalInstancedStaticMeshComponent* HISM = GetOrCreateHISM(Mesh);
 		
-			if (!HISM) { continue; }
+			if (!HISM) continue;
 			HISM->AddInstance(Transform);
 		}
 	}
@@ -358,15 +347,15 @@ void ADiamondSquare::GenerateObject(const TArray<FSpawnObjectData>& SpawnObjects
 
 void ADiamondSquare::GenerateRoad()
 {
-	if (!OwnerChunkManager) { return; }
-	if (!OwnerChunkManager->RoadGenerator) { return; }
+	if (!OwnerChunkManager) return;
+	if (!OwnerChunkManager->RoadGenerator) return;
 	
 	const float ChunkSize = Scale * VertexCount;
-	if (!OwnerChunkManager->RoadGenerator->HasRoadInChunk(ChunkCoord)) { return; }
+	if (!OwnerChunkManager->RoadGenerator->HasRoadInChunk(ChunkCoord)) return;
 	
 	TArray<FRoadData> RoadPoints = OwnerChunkManager->RoadGenerator->GetRoadDataInChunk(ChunkCoord);
 	
-	if (RoadPoints.Num() < 2) { return; }
+	if (RoadPoints.Num() < 2) return;
 
 
 

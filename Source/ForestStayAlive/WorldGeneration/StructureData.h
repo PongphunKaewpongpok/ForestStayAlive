@@ -3,60 +3,28 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Engine/DataAsset.h"
 #include "StructureData.generated.h"
 
+class UMeshSpawnData;
 /**
  * 
  */
-USTRUCT(BlueprintType)
-struct FStructureData
+UCLASS(BlueprintType)
+class FORESTSTAYALIVE_API UStructureData : public UPrimaryDataAsset
 {
 	GENERATED_BODY()
 	
+public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FName Type = TEXT("None");
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float Chance = 0.01f;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FVector Location = FVector::ZeroVector;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	FRotator Rotation = FRotator::ZeroRotator;
-;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	TArray<TObjectPtr<UStaticMesh>> Meshes;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	int32 Count = 5;
 	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	float MinScale = 0.8f;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	float MaxScale = 1.2f;
-	
-	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	float MinHeight = -100000.f;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	float MaxHeight = 100000.f;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	float MinSlope = 0.f;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	float MaxSlope = 30.f;
-};
-
-
-
-
-class FStructureLibrary
-{
-public:
-	/*static FStructureLibrary Tree();
-	static FStructureLibrary Rock();
-	static FStructureLibrary Bush();
-	
-	static TArray<FStructureLibrary> GetSpawnObjects_Forest();*/
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Mesh")
+	TArray<TObjectPtr<UMeshSpawnData>> MeshSpawnDatas;
 };

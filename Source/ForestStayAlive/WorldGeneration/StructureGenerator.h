@@ -28,5 +28,5 @@ private:
 	int8 RenderDistance;
 	float ChunkSize;
 	
-	TMap<FIntPoint, FStructureData> StructuresArray;
+	TMap<FIntPoint, UStructureData> StructuresArray;
 };
