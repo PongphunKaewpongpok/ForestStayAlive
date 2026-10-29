@@ -3,8 +3,11 @@
 
 #include "AttributeComponent.h"
 
+#include "ForestStayAlivePlayerController.h"
+#include "ForestStayAliveCharacter.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "UI/MainUIWidget.h"
 
 // Sets default values for this component's properties
 UAttributeComponent::UAttributeComponent()
@@ -22,6 +25,11 @@ void UAttributeComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
+	if (const AForestStayAliveCharacter* PlayerCharacter = Cast<AForestStayAliveCharacter>(GetOwner()))
+	{
+		OwnPlayerController = Cast<AForestStayAlivePlayerController>(PlayerCharacter->GetController());
+	}
+	
 	StopSprint();
 	
 }
@@ -35,16 +43,16 @@ void UAttributeComponent::TickComponent(float DeltaTime, ELevelTick TickType, FA
 	if (bIsSprinting)
 	{
 		ModifyStamina(-5 * DeltaTime);
-		ModifyHunger(-1 * DeltaTime);
-		ModifyThirst(-1 * DeltaTime);
+		ModifyHunger(-0.1 * DeltaTime);
+		ModifyThirst(-0.1 * DeltaTime);
 	}
 	else
 	{
 		ModifyStamina(5 * DeltaTime);
-		ModifyHunger(-0.1 * DeltaTime);
-		ModifyThirst(-0.1 * DeltaTime);
+		ModifyHunger(-0.01 * DeltaTime);
+		ModifyThirst(-0.01 * DeltaTime);
 	}
-	ModifySanity(1 * DeltaTime);
+	ModifySanity(-0.01 * DeltaTime);
 }
 
 
@@ -57,6 +65,9 @@ void UAttributeComponent::ApplyDamage(const float Amount)
 		Health - Amount,
 		0.0f
 	);
+	
+	if (!OwnPlayerController || !OwnPlayerController->MainUIWidget) return;
+	OwnPlayerController->MainUIWidget->UpdateHealthBar(GetHealthPercent());
 }
 
 void UAttributeComponent::Heal(const float Amount)
@@ -66,11 +77,14 @@ void UAttributeComponent::Heal(const float Amount)
 		Health + Amount,
 		MaxHealth
 	);
+	
+	if (!OwnPlayerController || !OwnPlayerController->MainUIWidget) return;
+	OwnPlayerController->MainUIWidget->UpdateHealthBar(GetHealthPercent());
 }
 
 float UAttributeComponent::GetHealthPercent() const
 {
-	if (MaxHealth <= 0.0f) { return 0.0f; }
+	if (Health <= 0.0f) { return 0.0f; }
 	return Health / MaxHealth;
 }
 
@@ -98,7 +112,7 @@ void UAttributeComponent::ModifyStamina(const float Amount)
 
 float UAttributeComponent::GetStaminaPercent() const
 {
-	if (MaxStamina <= 0.0f) { return 0.0f; }
+	if (Stamina <= 0.0f) { return 0.0f; }
 	return Stamina / MaxStamina;
 }
 // -------------------------------------------------------
@@ -161,11 +175,14 @@ void UAttributeComponent::ModifyHunger(const float Amount)
 	{
 		ApplyDamage(1);
 	}
+	
+	if (!OwnPlayerController || !OwnPlayerController->MainUIWidget) return;
+	OwnPlayerController->MainUIWidget->UpdateHungerBar(GetHungerPercent());
 }
 
 float UAttributeComponent::GetHungerPercent() const
 {
-	if (MaxHunger <= 0.0f) { return 0.0f; }
+	if (Hunger <= 0.0f) { return 0.0f; }
 	return Hunger / MaxHunger;
 }
 // ------------------------------------------------------
@@ -185,11 +202,14 @@ void UAttributeComponent::ModifyThirst(const float Amount)
 	{
 		ApplyDamage(1);
 	}
+	
+	if (!OwnPlayerController || !OwnPlayerController->MainUIWidget) return;
+	OwnPlayerController->MainUIWidget->UpdateThirstBar(GetThirstPercent());
 }
 
 float UAttributeComponent::GetThirstPercent() const
 {
-	if (MaxThirst <= 0.0f) { return 0.0f; }
+	if (Thirst <= 0.0f) { return 0.0f; }
 	return Thirst / MaxThirst;
 }
 // ------------------------------------------------------
@@ -199,7 +219,7 @@ float UAttributeComponent::GetThirstPercent() const
 // ----------------------- Sanity -----------------------
 float UAttributeComponent::GetSanityPercent() const
 {
-	if (MaxSanity <= 0.0f) { return 0.0f; }
+	if (Sanity <= 0.0f) { return 0.0f; }
 	return Sanity / MaxSanity;
 }
 
@@ -209,6 +229,9 @@ void UAttributeComponent::ModifySanity(const float Amount)
 		Sanity + Amount,
 		0.0f,
 		MaxSanity
-	);
+		);
+	
+	if (!OwnPlayerController || !OwnPlayerController->MainUIWidget) return;
+	OwnPlayerController->MainUIWidget->UpdateSanityBar(GetSanityPercent());
 }
 // ------------------------------------------------------

@@ -5,6 +5,10 @@
 #include "ProceduralMeshComponent.h"
 #include "KismetProceduralMeshLibrary.h"
 #include "Components/HierarchicalInstancedStaticMeshComponent.h"
+#include "Engine/EngineTypes.h"
+#include "Engine/World.h"
+#include "CollisionQueryParams.h"
+#include "Engine/OverlapResult.h"
 
 #include "FastNoiseLite.h"
 #include "RoadGenerator.h"
@@ -12,23 +16,42 @@
 #include "MeshSpawnData.h"
 #include "StructureData.h"
 
-bool ADiamondSquare::IsObjectCollision(const FVector& Position, const float Radius) const
+bool ADiamondSquare::IsObjectCollision(UStaticMesh* Mesh, const FTransform& Transform) const
 {
-	if (!GetWorld()) return true;
+	UWorld* World = GetWorld();
+	if (!World || !IsValid(Mesh)) return true;
+
+	UStaticMeshComponent* TestComponent = NewObject<UStaticMeshComponent>(const_cast<ADiamondSquare*>(this));
+	if (!TestComponent) return true;
+
+	TestComponent->SetStaticMesh(Mesh);
+	TestComponent->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	TestComponent->SetWorldScale3D(Transform.GetScale3D());
 
 	FCollisionObjectQueryParams ObjectQueryParams;
 	ObjectQueryParams.AddObjectTypesToQuery(ECC_GameTraceChannel2);
 
-	FCollisionQueryParams QueryParams;
-	QueryParams.AddIgnoredActor(this);
+	FComponentQueryParams QueryParams;
+	
+	if (ProceduralMesh)
+	{
+		QueryParams.AddIgnoredComponent(ProceduralMesh);
+	}
 
-	return GetWorld()->OverlapAnyTestByObjectType(
-		Position,
-		FQuat::Identity,
-		ObjectQueryParams,
-		FCollisionShape::MakeSphere(Radius),
-		QueryParams
+	TArray<FOverlapResult> Overlaps;
+
+	const bool bHasOverlap = World->ComponentOverlapMulti(
+		Overlaps,
+		TestComponent,
+		Transform.GetLocation(),
+		Transform.GetRotation(),
+		QueryParams,
+		ObjectQueryParams
 	);
+
+	TestComponent->MarkAsGarbage();
+
+	return bHasOverlap;
 }
 
 // Sets default values
@@ -314,104 +337,121 @@ void ADiamondSquare::GenerateStructures(const TArray<UStructureData*>& Structure
 }
 
 
+
 void ADiamondSquare::GenerateObject(const UStructureData* StructureData)
 {
-	if (!IsValid(StructureData)) return;
-	
-	FRandomStream Stream;
-	const int32 ChunkSeed = GetChunkSeed(100);
-	Stream.Initialize(ChunkSeed);
-	
-	for (const UMeshSpawnData* MeshData : StructureData->MeshSpawnDatas)
-	{
-		if (MeshData->Meshes.IsEmpty()) continue;
-		
-		const int32 Count = Stream.RandRange(MeshData->MinCount, MeshData->MaxCount);
-		int32 CurrentSpawnCount = 0;
-		for (int32 i = 0; i < Count; i++)
-		{
-			const int32 RemainingAttempts = Count - i;
+    if (!IsValid(StructureData)) return;
 
-			if (const int32 NeededCount = MeshData->MinCount - CurrentSpawnCount; RemainingAttempts > NeededCount)
-			{
-				if (Stream.FRand() > MeshData->Chance) continue;
-			}
-			CurrentSpawnCount++;
-			
-			
-			const int32 MaxAttempts = 30;
-			bool bFoundValidPosition = false;
+    FRandomStream Stream;
+    const int32 ChunkSeed = GetChunkSeed(100);
+    Stream.Initialize(ChunkSeed);
 
-			int32 Index = INDEX_NONE;
-			FVector Position = FVector::ZeroVector;
-			FVector WorldPosition = FVector::ZeroVector;
+    for (const UMeshSpawnData* MeshData : StructureData->MeshSpawnDatas)
+    {
+        if (!IsValid(MeshData) || MeshData->Meshes.IsEmpty()) continue;
 
-			for (int32 Attempt = 0; Attempt < MaxAttempts; ++Attempt)
-			{
-			    const int32 X = Stream.RandRange(0, VertexCount);
-			    const int32 Y = Stream.RandRange(0, VertexCount);
+        const int32 Count = Stream.RandRange(
+            MeshData->MinCount,
+            MeshData->MaxCount
+        );
 
-			    const int32 CandidateIndex = X * (VertexCount + 1) + Y;
+        int32 CurrentSpawnCount = 0;
 
-			    if (!Vertices.IsValidIndex(CandidateIndex) || !Normals.IsValidIndex(CandidateIndex)) continue;
+        while (CurrentSpawnCount < Count)
+        {
+            if (CurrentSpawnCount >= MeshData->MinCount)
+            {
+                if (Stream.FRand() > MeshData->Chance) break;
+            }
 
-			    const FVector CandidatePosition = Vertices[CandidateIndex];
-			    const FVector CandidateWorldPosition = GetActorTransform().TransformPosition(CandidatePosition);
+            const int32 MeshIndex = Stream.RandRange(0, MeshData->Meshes.Num() - 1);
 
-			    if (OwnerChunkManager && OwnerChunkManager->RoadGenerator && OwnerChunkManager->RoadGenerator->IsRoadCollision(CandidateWorldPosition, ChunkCoord, 100.0f)) continue;
+            UStaticMesh* Mesh = MeshData->Meshes[MeshIndex];
+            if (!IsValid(Mesh)) break;
 
-			    const float Height = CandidatePosition.Z;
-			    if (Height < MeshData->MinHeight || Height > MeshData->MaxHeight) continue;
+            const float ObjectScale = Stream.FRandRange(MeshData->MinScale, MeshData->MaxScale);
 
-			    const float Slope = FMath::RadiansToDegrees(
-			        FMath::Acos(
-			            FMath::Clamp(Normals[CandidateIndex].Z, -1.0f, 1.0f)
-			        )
-			    );
+            FRotator Rotation = FRotator::ZeroRotator;
+            Rotation.Yaw = Stream.FRandRange(0.0f, 360.0f);
 
-			    if (Slope < MeshData->MinSlope || Slope > MeshData->MaxSlope)  continue;
-			    if (IsObjectCollision(CandidateWorldPosition)) continue;
+            const int32 MaxAttempts = 30;
+            bool bSpawned = false;
 
-			    Index = CandidateIndex;
-			    Position = CandidatePosition;
-			    WorldPosition = CandidateWorldPosition;
-			    bFoundValidPosition = true;
-			    break;
-			}
+            for (int32 Attempt = 0; Attempt < MaxAttempts; ++Attempt)
+            {
+                const int32 X = Stream.RandRange(0, VertexCount);
+                const int32 Y = Stream.RandRange(0, VertexCount);
 
-			if (!bFoundValidPosition) continue;
+                const int32 Index = X * (VertexCount + 1) + Y;
+                if (!Vertices.IsValidIndex(Index) || !Normals.IsValidIndex(Index)) continue;
 
-			FRotator Rotation = FRotator::ZeroRotator;
-			Rotation.Yaw = Stream.FRandRange(0.0f, 360.0f);
+                const FVector Position = Vertices[Index];
 
-			const float ObjectScale = Stream.FRandRange(
-			    MeshData->MinScale,
-			    MeshData->MaxScale
-			);
+                const FTransform ActorTransform = GetActorTransform();
 
-			FTransform Transform;
-			Transform.SetLocation(Position);
-			Transform.SetRotation(Rotation.Quaternion());
-			Transform.SetScale3D(FVector(ObjectScale));
+                const FVector WorldPosition =
+                    ActorTransform.TransformPosition(Position);
 
-			const int32 MeshIndex = Stream.RandRange(
-			    0, MeshData->Meshes.Num() - 1
-			);
+                
+                if (OwnerChunkManager &&
+                    OwnerChunkManager->RoadGenerator &&
+                    OwnerChunkManager->RoadGenerator->IsRoadCollision(
+                        WorldPosition,
+                        ChunkCoord,
+                        100.0f))
+                {
+                    continue;
+                }
 
-			UStaticMesh* Mesh = MeshData->Meshes[MeshIndex];
-			UHierarchicalInstancedStaticMeshComponent* HISM =
-			    GetOrCreateHISM(Mesh);
+                const float Height = Position.Z;
+                if (Height < MeshData->MinHeight || Height > MeshData->MaxHeight) continue;
 
-			if (!HISM)
-			{
-			    continue;
-			}
+                const float Slope = FMath::RadiansToDegrees(
+                    FMath::Acos(
+                        FMath::Clamp(
+                            Normals[Index].Z,
+                            -1.0f,
+                            1.0f
+                        )
+                    )
+                );
 
-			HISM->AddInstance(Transform);
+                if (Slope < MeshData->MinSlope || Slope > MeshData->MaxSlope) continue;
 
-		}
-	}
+                FTransform WorldTransform;
+                WorldTransform.SetLocation(WorldPosition);
+                WorldTransform.SetRotation(
+                    (ActorTransform.GetRotation() *
+                     Rotation.Quaternion()).GetNormalized()
+                );
+                WorldTransform.SetScale3D(
+                    ActorTransform.GetScale3D() *
+                    FVector(ObjectScale)
+                );
+
+                if (IsObjectCollision(Mesh, WorldTransform)) continue;
+
+                UHierarchicalInstancedStaticMeshComponent* HISM = GetOrCreateHISM(Mesh);
+                if (!HISM) break;
+
+                
+                FTransform LocalTransform;
+                LocalTransform.SetLocation(Position);
+                LocalTransform.SetRotation(Rotation.Quaternion());
+                LocalTransform.SetScale3D(FVector(ObjectScale));
+
+                HISM->AddInstance(LocalTransform);
+
+                ++CurrentSpawnCount;
+                bSpawned = true;
+                break;
+            }
+
+            if (!bSpawned) break;
+        }
+    }
 }
+
 
 void ADiamondSquare::GenerateRoad()
 {

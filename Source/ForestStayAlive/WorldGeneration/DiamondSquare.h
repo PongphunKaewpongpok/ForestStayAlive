@@ -22,7 +22,7 @@ class FORESTSTAYALIVE_API ADiamondSquare : public AActor
 {
 	GENERATED_BODY()
 protected:
-	bool IsObjectCollision(const FVector& Position, const float Radius = 100.0f) const;
+	bool IsObjectCollision(UStaticMesh* Mesh, const FTransform& Transform) const;
 	
 public:	
 	// Sets default values for this actor's properties
