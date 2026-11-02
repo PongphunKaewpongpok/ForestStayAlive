@@ -6,14 +6,20 @@
 #include "Kismet/GameplayStatics.h"
 
 
-TMap<FString, FString> UMySaveGame::GetPhotosData()
+TMap<FString, FPhotoData> UMySaveGame::GetPhotosData() const
 {
 	return PhotosData;
 }
 
 void UMySaveGame::AddPhotoData(const FString& Name, const FString& FilePath)
 {
-	PhotosData.Add(Name, FilePath);
+	if (const FPhotoData* Data = PhotosData.Find(Name))
+	{
+		for (const FString& Path : Data->FilePaths)
+		{
+			UE_LOG(LogTemp, Log, TEXT("%s"), *Path);
+		}
+	}
 }
 
 bool UMySaveGame::SaveGame()

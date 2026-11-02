@@ -10,7 +10,7 @@
 #include "ForestStayAliveCharacter.h"
 #include "InputAction.h"
 #include "UI/Components/PlayerCrosshairWidget.h"
-#include "GameFramework/CharacterMovementComponent.h"
+#include "UI/TheDiscoveryBookWidget.h"
 
 void AForestStayAlivePlayerController::BeginPlay()
 {
@@ -49,6 +49,14 @@ void AForestStayAlivePlayerController::BeginPlay()
 		CameraWidget = CreateWidget<UCameraWidget>(
 			this,
 			CameraWidgetClass
+		);
+	}
+	
+	if (TheDiscoveryBookWidgetClass)
+	{
+		TheDiscoveryBookWidget = CreateWidget<UTheDiscoveryBookWidget>(
+			this,
+			TheDiscoveryBookWidgetClass
 		);
 	}
 	
@@ -96,31 +104,11 @@ void AForestStayAlivePlayerController::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 	
-	
-	if (PlayerCrosshairWidget->InteractProgress != 1.0f)
-	{
-		int32 ViewportWidth = 0;
-		int32 ViewportHeight = 0;
-		GetViewportSize(ViewportWidth, ViewportHeight);
-
-		SetMouseLocation(
-			ViewportWidth / 2,
-			ViewportHeight / 2
-		);
-	}
-	else
-	{
-		FInputModeGameAndUI InputMode;
-		InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
-		SetInputMode(InputMode);
-	}
-	
-	
-	if (PlayerCrosshairWidget)
+	if (PlayerCrosshairWidget && PlayerCrosshairWidget->InteractProgress == 1.0f)
 	{
 		float MouseX;
 		float MouseY;
-		
+	
 		if (GetMousePosition(MouseX, MouseY))
 		{
 			PlayerCrosshairWidget->SetPositionInViewport(
@@ -159,6 +147,24 @@ void AForestStayAlivePlayerController::OnLeftClickHold(const FInputActionValue& 
 		PlayerCrosshairWidget->SetCrosshairType(FText::FromString(TEXT("Interacting")));
 	}
 	
+	if (PlayerCrosshairWidget->InteractProgress != 1.0f)
+	{
+		int32 ViewportWidth = 0;
+		int32 ViewportHeight = 0;
+		GetViewportSize(ViewportWidth, ViewportHeight);
+
+		SetMouseLocation(
+			ViewportWidth / 2,
+			ViewportHeight / 2
+		);
+	}
+	
+	
+	
+	FInputModeGameAndUI InputMode;
+	InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+	SetInputMode(InputMode);
+	
 	PlayerCrosshairWidget->bIsInteracting = true;
 }
 
@@ -168,6 +174,22 @@ void AForestStayAlivePlayerController::OnLeftClickCompleted(const FInputActionVa
 	{
 		PlayerCrosshairWidget->SetCrosshairType(FText::FromString(TEXT("Interactable")));
 	}
+	
+	int32 ViewportWidth = 0;
+	int32 ViewportHeight = 0;
+	GetViewportSize(ViewportWidth, ViewportHeight);
+
+	SetMouseLocation(
+		ViewportWidth/2,
+		ViewportHeight/2
+	);
+	
+	PlayerCrosshairWidget->SetPositionInViewport(
+		FVector2D(ViewportWidth/2, ViewportHeight/2),
+		true
+	);
+	
+	
 	
 	SetInputMode(FInputModeGameOnly());
 	

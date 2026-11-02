@@ -6,6 +6,7 @@
 #include "GameFramework/PlayerController.h"
 #include "ForestStayAlivePlayerController.generated.h"
 
+class UTheDiscoveryBookWidget;
 class UPlayerCrosshairWidget;
 class AForestStayAliveCharacter;
 struct FInputActionValue;
@@ -53,6 +54,12 @@ public:
 	UPlayerCrosshairWidget* PlayerCrosshairWidget;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
 	TSubclassOf<UPlayerCrosshairWidget> PlayerCrosshairWidgetClass;
+	
+	UPROPERTY(BlueprintReadOnly)
+	UTheDiscoveryBookWidget* TheDiscoveryBookWidget;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	TSubclassOf<UTheDiscoveryBookWidget> TheDiscoveryBookWidgetClass;
+	
 	
 	UPROPERTY()
 	AForestStayAliveCharacter* ForestStayAliveCharacter;

@@ -46,3 +46,4 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float MaxSlope = 30.f;
 };
+

@@ -43,16 +43,16 @@ void UAttributeComponent::TickComponent(float DeltaTime, ELevelTick TickType, FA
 	if (bIsSprinting)
 	{
 		ModifyStamina(-5 * DeltaTime);
-		ModifyHunger(-0.1 * DeltaTime);
-		ModifyThirst(-0.1 * DeltaTime);
+		ModifyHunger(-0.5 * DeltaTime);
+		ModifyThirst(-0.75 * DeltaTime);
 	}
 	else
 	{
 		ModifyStamina(5 * DeltaTime);
-		ModifyHunger(-0.01 * DeltaTime);
-		ModifyThirst(-0.01 * DeltaTime);
+		ModifyHunger(-0.25 * DeltaTime);
+		ModifyThirst(-0.25 * DeltaTime);
 	}
-	ModifySanity(-0.01 * DeltaTime);
+	ModifySanity(-0.1 * DeltaTime);
 }
 
 
@@ -173,7 +173,7 @@ void UAttributeComponent::ModifyHunger(const float Amount)
 	
 	if (Hunger <= 0.0f)
 	{
-		ApplyDamage(1);
+		ApplyDamage(0.1);
 	}
 	
 	if (!OwnPlayerController || !OwnPlayerController->MainUIWidget) return;
@@ -200,7 +200,7 @@ void UAttributeComponent::ModifyThirst(const float Amount)
 	
 	if (Thirst <= 0.0f)
 	{
-		ApplyDamage(1);
+		ApplyDamage(0.1);
 	}
 	
 	if (!OwnPlayerController || !OwnPlayerController->MainUIWidget) return;

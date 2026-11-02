@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "UObject/Object.h"
 
-#include "StructureData.h"
+#include "ForestStayAlive/DataASsets/StructureData.h"
 
 #include "StructureGenerator.generated.h"
 

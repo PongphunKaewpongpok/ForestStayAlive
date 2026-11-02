@@ -6,20 +6,40 @@
 #include "GameFramework/SaveGame.h"
 #include "MySaveGame.generated.h"
 
+struct FDiscoveryBookEntryProgress;
 /**
  * 
  */
+
+USTRUCT(BlueprintType)
+struct FPhotoData
+{
+	GENERATED_BODY()
+
+	UPROPERTY(SaveGame)
+	TArray<FString> FilePaths;
+};
+
 UCLASS()
 class FORESTSTAYALIVE_API UMySaveGame : public USaveGame
 {
 	GENERATED_BODY()
-	
+
+	UPROPERTY(SaveGame)
+	TMap<FString, FPhotoData> PhotosData;
+
 public:
-	TMap<FString, FString> GetPhotosData();
+
+	UFUNCTION(BlueprintCallable, Category = "Save Game")
+	TMap<FString, FPhotoData> GetPhotosData() const;
+
+	UFUNCTION(BlueprintCallable, Category = "Save Game")
 	void AddPhotoData(const FString& Name, const FString& FilePath);
+
+	UFUNCTION(BlueprintCallable, Category = "Save Game")
 	bool SaveGame();
-	
-private:
-	UPROPERTY()
-	TMap<FString, FString> PhotosData;
+
+	// Discovery Book Progress
+	UPROPERTY(SaveGame, BlueprintReadWrite, Category = "Discovery Book")
+	TArray<FDiscoveryBookEntryProgress> Entries;
 };

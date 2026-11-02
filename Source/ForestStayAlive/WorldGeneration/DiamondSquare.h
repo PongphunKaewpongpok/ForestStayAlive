@@ -21,8 +21,6 @@ UCLASS()
 class FORESTSTAYALIVE_API ADiamondSquare : public AActor
 {
 	GENERATED_BODY()
-protected:
-	bool IsObjectCollision(UStaticMesh* Mesh, const FTransform& Transform) const;
 	
 public:	
 	// Sets default values for this actor's properties
@@ -125,6 +123,7 @@ private:
 	TArray<FVector2D> WaterUV;
 	TArray<FVector> WaterNormals;
 	TArray<FProcMeshTangent> WaterTangents;
+	TArray<FVector> SpawnedPositions;
 	
 	TArray<bool> RiverMask;
 	

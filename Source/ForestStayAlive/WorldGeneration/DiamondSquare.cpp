@@ -8,51 +8,13 @@
 #include "Engine/EngineTypes.h"
 #include "Engine/World.h"
 #include "CollisionQueryParams.h"
-#include "Engine/OverlapResult.h"
 
 #include "FastNoiseLite.h"
 #include "RoadGenerator.h"
 #include "ChunkManager.h"
-#include "MeshSpawnData.h"
-#include "StructureData.h"
+#include "ForestStayAlive/DataASsets/MeshSpawnData.h"
+#include "ForestStayAlive/DataASsets/StructureData.h"
 
-bool ADiamondSquare::IsObjectCollision(UStaticMesh* Mesh, const FTransform& Transform) const
-{
-	UWorld* World = GetWorld();
-	if (!World || !IsValid(Mesh)) return true;
-
-	UStaticMeshComponent* TestComponent = NewObject<UStaticMeshComponent>(const_cast<ADiamondSquare*>(this));
-	if (!TestComponent) return true;
-
-	TestComponent->SetStaticMesh(Mesh);
-	TestComponent->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-	TestComponent->SetWorldScale3D(Transform.GetScale3D());
-
-	FCollisionObjectQueryParams ObjectQueryParams;
-	ObjectQueryParams.AddObjectTypesToQuery(ECC_GameTraceChannel2);
-
-	FComponentQueryParams QueryParams;
-	
-	if (ProceduralMesh)
-	{
-		QueryParams.AddIgnoredComponent(ProceduralMesh);
-	}
-
-	TArray<FOverlapResult> Overlaps;
-
-	const bool bHasOverlap = World->ComponentOverlapMulti(
-		Overlaps,
-		TestComponent,
-		Transform.GetLocation(),
-		Transform.GetRotation(),
-		QueryParams,
-		ObjectQueryParams
-	);
-
-	TestComponent->MarkAsGarbage();
-
-	return bHasOverlap;
-}
 
 // Sets default values
 /*
@@ -100,12 +62,8 @@ void ADiamondSquare::CreateVertices()
 
 
 	FastNoiseLite Noise;
-
 	Noise.SetSeed(Seed);
-
-	Noise.SetNoiseType(
-		FastNoiseLite::NoiseType_Perlin
-	);
+	Noise.SetNoiseType(FastNoiseLite::NoiseType_Perlin);
 
 
 
@@ -114,14 +72,8 @@ void ADiamondSquare::CreateVertices()
 		for(int y = 0; y <= VertexCount; y++)
 		{
 
-			int WorldX =
-				ChunkCoord.X * VertexCount + x;
-
-
-			int WorldY =
-				ChunkCoord.Y * VertexCount + y;
-
-
+			int WorldX = ChunkCoord.X * VertexCount + x;
+			int WorldY = ChunkCoord.Y * VertexCount + y;
 
 			float Height =
 				Noise.GetNoise(
@@ -135,8 +87,7 @@ void ADiamondSquare::CreateVertices()
 
 			HeightMap.Add(Height);
 
-
-
+			
 			Vertices.Add(
 				FVector(
 					x * Scale,
@@ -189,6 +140,8 @@ void ADiamondSquare::GenerateTerrain()
 	Tangents.Reset();
 	
 	HeightMap.Reset();
+	
+	SpawnedPositions.Reset();
 
 
 	// Generation
@@ -245,11 +198,8 @@ void ADiamondSquare::GenerateRiver()
 		{
 			int32 Index = x * (VertexCount + 1) + y;
 
-			float WorldX =
-				(ChunkCoord.X * VertexCount + x) * Scale;
-
-			float WorldY =
-				(ChunkCoord.Y * VertexCount + y) * Scale;
+			float WorldX = (ChunkCoord.X * VertexCount + x) * Scale;
+			float WorldY = (ChunkCoord.Y * VertexCount + y) * Scale;
 
 			float RiverValue =
 				RiverNoise.GetNoise(
@@ -261,10 +211,7 @@ void ADiamondSquare::GenerateRiver()
 			{
 				RiverMask[Index] = true;
 
-				float Alpha =
-					1.f -
-					FMath::Abs(RiverValue) /
-					RiverWidth;
+				float Alpha = 1.0f - FMath::Abs(RiverValue)/RiverWidth;
 
 				Vertices[Index].Z -= RiverDepth * Alpha;
 			}
@@ -338,6 +285,8 @@ void ADiamondSquare::GenerateStructures(const TArray<UStructureData*>& Structure
 
 
 
+
+
 void ADiamondSquare::GenerateObject(const UStructureData* StructureData)
 {
     if (!IsValid(StructureData)) return;
@@ -346,111 +295,369 @@ void ADiamondSquare::GenerateObject(const UStructureData* StructureData)
     const int32 ChunkSeed = GetChunkSeed(100);
     Stream.Initialize(ChunkSeed);
 
-    for (const UMeshSpawnData* MeshData : StructureData->MeshSpawnDatas)
-    {
-        if (!IsValid(MeshData) || MeshData->Meshes.IsEmpty()) continue;
+    const float MaxChunkLength = VertexCount * Scale;
+    const FTransform ActorTransform = GetActorTransform();
 
-        const int32 Count = Stream.RandRange(
-            MeshData->MinCount,
-            MeshData->MaxCount
+    FVector CenterPosition = FVector::ZeroVector;
+    FVector CenterWorldPosition = FVector::ZeroVector;
+
+    bool bCenterSpawned = false;
+
+    // =================================================
+    // Random Spawn Position & Check Terrain
+    // =================================================
+
+    auto TryGetSpawnPosition =
+        [&](const UMeshSpawnData* MeshData,
+            bool bUseCenter,
+            float MinRadius,
+            float MaxRadius,
+            FVector& OutPosition,
+            FVector& OutWorldPosition) -> bool
+    {
+        if (!IsValid(MeshData) || Scale <= 0.f) return false;
+
+        float LocalX;
+        float LocalY;
+
+        if (bUseCenter)
+        {
+            MinRadius = FMath::Max(0.f, MinRadius);
+            MaxRadius = FMath::Max(MinRadius, MaxRadius);
+
+            const float Angle = Stream.FRandRange(0.f, 360.f);
+
+            
+            const float Radius = FMath::Sqrt(
+                Stream.FRandRange(
+                    FMath::Square(MinRadius),
+                    FMath::Square(MaxRadius)
+                )
+            );
+
+            LocalX = CenterPosition.X + FMath::Cos(FMath::DegreesToRadians(Angle)) * Radius;
+            LocalY = CenterPosition.Y + FMath::Sin(FMath::DegreesToRadians(Angle)) * Radius;
+        }
+        else
+        {
+            LocalX = Stream.FRandRange(0.f, MaxChunkLength);
+            LocalY = Stream.FRandRange(0.f, MaxChunkLength);
+        }
+
+        
+        if (LocalX < 0.f || LocalX > MaxChunkLength || LocalY < 0.f || LocalY > MaxChunkLength) return false;
+
+        
+        const float GridX = LocalX / Scale;
+        const float GridY = LocalY / Scale;
+
+        int32 X0 = FMath::FloorToInt(GridX);
+        int32 Y0 = FMath::FloorToInt(GridY);
+
+        X0 = FMath::Clamp(X0, 0, VertexCount - 1);
+        Y0 = FMath::Clamp(Y0, 0, VertexCount - 1);
+
+        const int32 X1 = X0 + 1;
+        const int32 Y1 = Y0 + 1;
+
+        const float FracX = GridX - X0;
+        const float FracY = GridY - Y0;
+
+        const int32 Index00 = X0 * (VertexCount + 1) + Y0;
+        const int32 Index10 = X1 * (VertexCount + 1) + Y0;
+        const int32 Index01 = X0 * (VertexCount + 1) + Y1;
+        const int32 Index11 = X1 * (VertexCount + 1) + Y1;
+
+        if (!Vertices.IsValidIndex(Index00) ||
+            !Vertices.IsValidIndex(Index10) ||
+            !Vertices.IsValidIndex(Index01) ||
+            !Vertices.IsValidIndex(Index11) ||
+            !Normals.IsValidIndex(Index00) ||
+            !Normals.IsValidIndex(Index10) ||
+            !Normals.IsValidIndex(Index01) ||
+            !Normals.IsValidIndex(Index11))
+        {
+            return false;
+        }
+
+        
+        const float Height = FMath::Lerp(
+            FMath::Lerp(
+                Vertices[Index00].Z,
+                Vertices[Index10].Z,
+                FracX
+            ),
+            FMath::Lerp(
+                Vertices[Index01].Z,
+                Vertices[Index11].Z,
+                FracX
+            ),
+            FracY
         );
+
+        if (Height < MeshData->MinHeight || Height > MeshData->MaxHeight) return false;
+
+        
+        const FVector InterpolatedNormal = FMath::Lerp(
+            FMath::Lerp(
+                Normals[Index00],
+                Normals[Index10],
+                FracX
+            ),
+            FMath::Lerp(
+                Normals[Index01],
+                Normals[Index11],
+                FracX
+            ),
+            FracY
+        ).GetSafeNormal();
+
+        
+        const float Slope = FMath::RadiansToDegrees(
+            FMath::Acos(
+                FMath::Clamp(
+                    InterpolatedNormal.Z,
+                    -1.f,
+                    1.f
+                )
+            )
+        );
+
+        if (Slope < MeshData->MinSlope || Slope > MeshData->MaxSlope) return false;
+
+        
+        OutPosition = FVector(LocalX, LocalY, Height);
+        OutWorldPosition = ActorTransform.TransformPosition(OutPosition);
+
+        
+        if (OwnerChunkManager &&
+            OwnerChunkManager->RoadGenerator &&
+            OwnerChunkManager->RoadGenerator->IsRoadCollision(
+                OutWorldPosition,
+                ChunkCoord,
+                100.f
+            ))
+        {
+            return false;
+        }
+
+        return true;
+    };
+
+    // =================================================
+    // Spawn MeshData
+    // =================================================
+
+    auto SpawnMeshData =
+        [&](const UMeshSpawnData* MeshData,
+            bool bUseCenter,
+            float MinRadius,
+            float MaxRadius,
+            bool bFaceToCenter)
+    {
+        if (!IsValid(MeshData) || MeshData->Meshes.IsEmpty()) return;
+
+        const int32 Count = Stream.RandRange(MeshData->MinCount, MeshData->MaxCount);
 
         int32 CurrentSpawnCount = 0;
 
-        while (CurrentSpawnCount < Count)
+        const int32 MaxGlobalAttempts = Count * 30;
+        int32 GlobalAttempts = 0;
+
+        while (CurrentSpawnCount < Count && GlobalAttempts < MaxGlobalAttempts)
         {
+            ++GlobalAttempts;
+
             if (CurrentSpawnCount >= MeshData->MinCount)
             {
                 if (Stream.FRand() > MeshData->Chance) break;
             }
 
-            const int32 MeshIndex = Stream.RandRange(0, MeshData->Meshes.Num() - 1);
+            // สุ่ม Static Mesh
+            const int32 MeshIndex = Stream.RandRange(
+                0,
+                MeshData->Meshes.Num() - 1
+            );
 
             UStaticMesh* Mesh = MeshData->Meshes[MeshIndex];
+
             if (!IsValid(Mesh)) break;
 
+            
             const float ObjectScale = Stream.FRandRange(MeshData->MinScale, MeshData->MaxScale);
 
-            FRotator Rotation = FRotator::ZeroRotator;
-            Rotation.Yaw = Stream.FRandRange(0.0f, 360.0f);
+            
+            FVector Position;
+            FVector WorldPosition;
 
-            const int32 MaxAttempts = 30;
-            bool bSpawned = false;
-
-            for (int32 Attempt = 0; Attempt < MaxAttempts; ++Attempt)
+            if (!TryGetSpawnPosition(
+                MeshData,
+                bUseCenter,
+                MinRadius,
+                MaxRadius,
+                Position,
+                WorldPosition
+            ))
             {
-                const int32 X = Stream.RandRange(0, VertexCount);
-                const int32 Y = Stream.RandRange(0, VertexCount);
-
-                const int32 Index = X * (VertexCount + 1) + Y;
-                if (!Vertices.IsValidIndex(Index) || !Normals.IsValidIndex(Index)) continue;
-
-                const FVector Position = Vertices[Index];
-
-                const FTransform ActorTransform = GetActorTransform();
-
-                const FVector WorldPosition =
-                    ActorTransform.TransformPosition(Position);
-
-                
-                if (OwnerChunkManager &&
-                    OwnerChunkManager->RoadGenerator &&
-                    OwnerChunkManager->RoadGenerator->IsRoadCollision(
-                        WorldPosition,
-                        ChunkCoord,
-                        100.0f))
-                {
-                    continue;
-                }
-
-                const float Height = Position.Z;
-                if (Height < MeshData->MinHeight || Height > MeshData->MaxHeight) continue;
-
-                const float Slope = FMath::RadiansToDegrees(
-                    FMath::Acos(
-                        FMath::Clamp(
-                            Normals[Index].Z,
-                            -1.0f,
-                            1.0f
-                        )
-                    )
-                );
-
-                if (Slope < MeshData->MinSlope || Slope > MeshData->MaxSlope) continue;
-
-                FTransform WorldTransform;
-                WorldTransform.SetLocation(WorldPosition);
-                WorldTransform.SetRotation(
-                    (ActorTransform.GetRotation() *
-                     Rotation.Quaternion()).GetNormalized()
-                );
-                WorldTransform.SetScale3D(
-                    ActorTransform.GetScale3D() *
-                    FVector(ObjectScale)
-                );
-
-                if (IsObjectCollision(Mesh, WorldTransform)) continue;
-
-                UHierarchicalInstancedStaticMeshComponent* HISM = GetOrCreateHISM(Mesh);
-                if (!HISM) break;
-
-                
-                FTransform LocalTransform;
-                LocalTransform.SetLocation(Position);
-                LocalTransform.SetRotation(Rotation.Quaternion());
-                LocalTransform.SetScale3D(FVector(ObjectScale));
-
-                HISM->AddInstance(LocalTransform);
-
-                ++CurrentSpawnCount;
-                bSpawned = true;
-                break;
+                continue;
             }
 
-            if (!bSpawned) break;
+            
+            bool bTooClose = false;
+            const float MinDistance = 300.f;
+
+            for (const FVector& ExistingPos : SpawnedPositions)
+            {
+                if (FVector::DistSquared(
+                    WorldPosition,
+                    ExistingPos
+                ) < FMath::Square(MinDistance))
+                {
+                    bTooClose = true;
+                    break;
+                }
+            }
+
+            if (bTooClose) continue;
+
+            FRotator Rotation = FRotator::ZeroRotator;
+
+            if (bUseCenter && bFaceToCenter)
+            {
+                FVector Direction = CenterPosition - Position;
+
+                Direction.Z = 0.0f;
+
+                Rotation = Direction.Rotation();
+            }
+            else
+            {
+                Rotation.Yaw = Stream.FRandRange(0.0f, 360.0f);
+            }
+
+            UHierarchicalInstancedStaticMeshComponent* HISM = GetOrCreateHISM(Mesh);
+
+            if (!HISM) break;
+
+            FTransform LocalTransform;
+            LocalTransform.SetLocation(Position);
+            LocalTransform.SetRotation(Rotation.Quaternion());
+            LocalTransform.SetScale3D(FVector(ObjectScale));
+
+            HISM->AddInstance(LocalTransform);
+
+            SpawnedPositions.Add(WorldPosition);
+
+            ++CurrentSpawnCount;
+        }
+    };
+
+    // =================================================
+    // Spawn CenterMesh
+    // =================================================
+
+    if (StructureData->bHasCenterMesh)
+    {
+        const UMeshSpawnData* CenterData = StructureData->CenterMesh;
+
+        if (!IsValid(CenterData) || CenterData->Meshes.IsEmpty()) return;
+
+        bool bFoundCenterPosition = false;
+
+        for (int32 Attempt = 0; Attempt < 100; ++Attempt)
+        {
+            if (TryGetSpawnPosition(
+                CenterData,
+                false,
+                0.f,
+                0.f,
+                CenterPosition,
+                CenterWorldPosition
+            ))
+            {
+                bFoundCenterPosition = true;
+                break;
+            }
+        }
+
+        if (!bFoundCenterPosition) return;
+
+        const int32 MeshIndex = Stream.RandRange(
+            0,
+            CenterData->Meshes.Num() - 1
+        );
+
+        UStaticMesh* Mesh = CenterData->Meshes[MeshIndex];
+
+        if (!IsValid(Mesh)) return;
+
+        const float ObjectScale = Stream.FRandRange(
+            CenterData->MinScale,
+            CenterData->MaxScale
+        );
+
+        FRotator Rotation = FRotator::ZeroRotator;
+        Rotation.Yaw = Stream.FRandRange(0.f, 360.f);
+
+        UHierarchicalInstancedStaticMeshComponent* HISM =
+            GetOrCreateHISM(Mesh);
+
+        if (!HISM) return;
+
+        FTransform LocalTransform;
+        LocalTransform.SetLocation(CenterPosition);
+        LocalTransform.SetRotation(Rotation.Quaternion());
+        LocalTransform.SetScale3D(FVector(ObjectScale));
+
+        HISM->AddInstance(LocalTransform);
+
+        bCenterSpawned = true;
+    }
+
+    // =================================================
+    // Normal Spawn Meshes
+    // =================================================
+
+    if (!StructureData->bHasCenterMesh)
+    {
+        for (const UMeshSpawnData* MeshData : StructureData->MeshesSpawnData)
+        {
+            SpawnMeshData(
+                MeshData,
+                false,
+                0.f,
+                0.f,
+                false
+            );
         }
     }
+
+    // =================================================
+    // Spawn Meshes With CenterMesh
+    // =================================================
+
+    if (StructureData->bHasCenterMesh && bCenterSpawned)
+    {
+        for (const FMeshWithCenterData& Entry : StructureData->MeshesWithCenterSpawnData)
+        {
+            SpawnMeshData(
+                Entry.MeshSpawnData,
+                true,
+                Entry.MinRadiusFromCenter,
+                Entry.MaxRadiusFromCenter,
+                Entry.FaceToCenterMesh
+            );
+        }
+    }
+
+    
+    if (bCenterSpawned)
+    {
+        SpawnedPositions.Add(CenterWorldPosition);
+    }
 }
+
+
 
 
 void ADiamondSquare::GenerateRoad()
@@ -496,17 +703,14 @@ void ADiamondSquare::GenerateRoad()
 		Direction.Normalize();
 
 		
-		// Vector ด้านข้างถนน
 		FVector Right = FVector::CrossProduct(FVector::UpVector, Direction);
 		Right.Normalize();
 		
 		
-		// World Position ของขอบถนน
 		FVector LeftWorld = WorldPos - Right * (RoadWidth/2);
 		FVector RightWorld = WorldPos + Right * (RoadWidth/2);
 
 
-		/* World -> Chunk Local*/
 		FVector ChunkOrigin;
 
 		ChunkOrigin.X = ChunkCoord.X * ChunkSize;
@@ -608,8 +812,10 @@ UHierarchicalInstancedStaticMeshComponent* ADiamondSquare::GetOrCreateHISM(UStat
 	NewHISM->RegisterComponent();
 	NewHISM->SetStaticMesh(Mesh);
 	
-	NewHISM->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	NewHISM->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 	NewHISM->SetCollisionObjectType(ECC_GameTraceChannel2);
+	NewHISM->SetCollisionResponseToAllChannels(ECR_Ignore);
+	NewHISM->SetCollisionResponseToChannel(ECC_GameTraceChannel2, ECR_Overlap);
 
 	HISMMap.Add(Mesh, NewHISM);
 
