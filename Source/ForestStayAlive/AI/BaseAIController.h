@@ -28,25 +28,17 @@ protected:
 	virtual void BeginPlay() override;
 	
 	UFUNCTION()
-	void OnTargetSensed(AActor* Actor, FAIStimulus Stimulus);
+	virtual void OnTargetSensed(AActor* Actor, FAIStimulus Stimulus);
 	
 	UPROPERTY(EditAnywhere, Category="AI")
 	UBehaviorTree* BehaviorTreeAsset;
 	
 	// Sense Config
-	UPROPERTY(EditAnywhere, Category="AI")
-	bool bUseSight = false;
-	UPROPERTY(VisibleAnywhere, Category="AI", Meta = (EditCondition="bUseSight", EditConditionHides))
+	UPROPERTY(VisibleAnywhere, Category="AI")
 	UAISenseConfig_Sight* SightConfig;
-	
-	UPROPERTY(EditAnywhere, Category="AI")
-	bool bUseHearing = false;
-	UPROPERTY(VisibleAnywhere, Category="AI", Meta = (EditCondition="bUseHearing", EditConditionHides))
+	UPROPERTY(VisibleAnywhere, Category="AI")
 	UAISenseConfig_Hearing* HearingConfig;
-	
-	UPROPERTY(EditAnywhere, Category="AI")
-	bool bUseDamage = false;
-	UPROPERTY(VisibleAnywhere, Category="AI", Meta = (EditCondition="bUseDamage", EditConditionHides))
+	UPROPERTY(VisibleAnywhere, Category="AI")
 	UAISenseConfig_Damage* DamageConfig;
 	
 	

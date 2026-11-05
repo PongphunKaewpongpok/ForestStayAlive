@@ -6,27 +6,54 @@
 #include "Kismet/GameplayStatics.h"
 
 
-TMap<FString, FPhotoData> UMySaveGame::GetPhotosData() const
-{
-	return PhotosData;
-}
 
-void UMySaveGame::AddPhotoData(const FString& Name, const FString& FilePath)
+const FString UMySaveGame::SaveSlotName = TEXT("SaveGame");
+
+UMySaveGame* UMySaveGame::LoadSaveGame()
 {
-	if (const FPhotoData* Data = PhotosData.Find(Name))
+	if (UGameplayStatics::DoesSaveGameExist(SaveSlotName, 0))
 	{
-		for (const FString& Path : Data->FilePaths)
+		UMySaveGame* LoadedSave = Cast<UMySaveGame>(UGameplayStatics::LoadGameFromSlot(SaveSlotName, 0));
+
+		if (IsValid(LoadedSave))
 		{
-			UE_LOG(LogTemp, Log, TEXT("%s"), *Path);
+			return LoadedSave;
 		}
 	}
+
+	UMySaveGame* NewSave = Cast<UMySaveGame>(
+		UGameplayStatics::CreateSaveGameObject(
+			UMySaveGame::StaticClass()
+		)
+	);
+
+	if (IsValid(NewSave))
+	{
+		NewSave->SaveGame();
+	}
+
+	return NewSave;
 }
 
 bool UMySaveGame::SaveGame()
 {
 	return UGameplayStatics::SaveGameToSlot(
 		this,
-		TEXT("SaveData"),
+		SaveSlotName,
 		0
 	);
+}
+
+void UMySaveGame::AddPhotoData(const FString& Name, const FString& FilePath)
+{
+	FPhotoData& Data = PhotosData.FindOrAdd(Name);
+
+	Data.FilePaths.AddUnique(FilePath);
+
+	SaveGame();
+}
+
+const FPhotoData* UMySaveGame::FindPhotoData(const FString& Name) const
+{
+	return PhotosData.Find(Name);
 }

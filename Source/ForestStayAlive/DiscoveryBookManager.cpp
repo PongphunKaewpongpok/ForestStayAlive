@@ -6,7 +6,6 @@
 #include "DiscoveryBookEntryProgress.h"
 #include "DiscoveryBookSettings.h"
 #include "MySaveGame.h"
-#include "Kismet/GameplayStatics.h"
 #include "DataAssets/DiscoveryBookData.h"
 
 class UDiscoveryBookSettings;
@@ -24,23 +23,7 @@ void UDiscoveryBookManager::Initialize(FSubsystemCollectionBase& Collection)
 
 void UDiscoveryBookManager::LoadDiscoveryBook()
 {
-	const FString SlotName = TEXT("MySave");
-
-	if (UGameplayStatics::DoesSaveGameExist(SlotName, 0))
-	{
-		SaveData = Cast<UMySaveGame>(UGameplayStatics::LoadGameFromSlot(SlotName, 0));
-	}
-
-	if (!SaveData)
-	{
-		SaveData = Cast<UMySaveGame>(
-			UGameplayStatics::CreateSaveGameObject(
-				UMySaveGame::StaticClass()
-			)
-		);
-
-		SaveDiscoveryBook();
-	}
+	SaveData = UMySaveGame::LoadSaveGame();
 }
 
 FDiscoveryBookEntryProgress* UDiscoveryBookManager::FindOrAddEntry(FName DiscoveryID)
@@ -124,13 +107,9 @@ bool UDiscoveryBookManager::IsDiscoveryItemUnlocked(
 
 void UDiscoveryBookManager::SaveDiscoveryBook()
 {
-	if (!SaveData) return;
+	if (!IsValid(SaveData)) return;
 
-	UGameplayStatics::SaveGameToSlot(
-		SaveData,
-		TEXT("MySave"),
-		0
-	);
+	SaveData->SaveGame();
 }
 
 UDiscoveryBookData* UDiscoveryBookManager::GetDiscoveryDataByIndex(FName Category, int32 Index) const

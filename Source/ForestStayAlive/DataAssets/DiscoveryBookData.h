@@ -16,6 +16,9 @@ class FORESTSTAYALIVE_API UDiscoveryBookData : public UPrimaryDataAsset
 
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FName DiscoveryID;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FText Name = FText::FromString("Unknown");
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
@@ -27,6 +30,9 @@ public:
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TMap<FName, FText> FoundInLocations;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TMap<FName, TObjectPtr<UStaticMesh>> MeshesList;
 
 	
 };

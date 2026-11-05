@@ -98,6 +98,16 @@ void AForestStayAlivePlayerController::SetupInputComponent()
 			&AForestStayAlivePlayerController::OnLeftClickCompleted
 		);
 	}
+	
+	if (DiscoveryBookAction)
+	{
+		EnhancedInput->BindAction(
+			DiscoveryBookAction,
+			ETriggerEvent::Started,
+			this,
+			&AForestStayAlivePlayerController::OnDiscoveryBookStarted
+		);
+	}
 }
 
 void AForestStayAlivePlayerController::Tick(float DeltaSeconds)
@@ -121,6 +131,8 @@ void AForestStayAlivePlayerController::Tick(float DeltaSeconds)
 
 void AForestStayAlivePlayerController::OnRightClickStarted(const FInputActionValue& Value)
 {
+	if (TheDiscoveryBookWidget && TheDiscoveryBookWidget->IsInViewport()) return;
+	
 	if (!CameraWidget) return;
 	
 	if (CameraWidget->IsInViewport())
@@ -142,6 +154,8 @@ void AForestStayAlivePlayerController::OnRightClickStarted(const FInputActionVal
 
 void AForestStayAlivePlayerController::OnLeftClickHold(const FInputActionValue& Value)
 {
+	if (TheDiscoveryBookWidget && TheDiscoveryBookWidget->IsInViewport()) return;
+		
 	if (PlayerCrosshairWidget)
 	{
 		PlayerCrosshairWidget->SetCrosshairType(FText::FromString(TEXT("Interacting")));
@@ -196,4 +210,21 @@ void AForestStayAlivePlayerController::OnLeftClickCompleted(const FInputActionVa
 	
 	PlayerCrosshairWidget->bIsInteracting = false;
 	PlayerCrosshairWidget->InteractProgress = 0.0f;
+}
+
+void AForestStayAlivePlayerController::OnDiscoveryBookStarted(const FInputActionValue& Value)
+{
+	if (!TheDiscoveryBookWidget) return;
+	if (CameraWidget && CameraWidget->IsInViewport()) return;
+	
+	OnLeftClickCompleted(false);
+	
+	if (TheDiscoveryBookWidget->IsInViewport())
+	{
+		TheDiscoveryBookWidget->RemoveFromViewport();
+	}
+	else
+	{
+		TheDiscoveryBookWidget->AddToViewport();
+	}
 }

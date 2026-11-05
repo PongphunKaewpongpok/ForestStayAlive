@@ -35,6 +35,14 @@ class FORESTSTAYALIVE_API UTheDiscoveryBookWidget : public UUserWidget
 protected:
 	virtual void NativeConstruct() override;
 	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "UI")
+	TObjectPtr<UTexture2D> LockImageTexture;
+	
+	UPROPERTY()
+	TObjectPtr<UTexture2D> CaptureTexture;
+	void UpdateCaptureImage(const FString& DiscoveryID);
+	
+	
 	
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidget), Category = "UI")
 	TObjectPtr<UTextBlock> DiscoveryName;
@@ -61,6 +69,10 @@ protected:
 	TObjectPtr<UButton> NextPage;
 	
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidget), Category = "UI")
+	TObjectPtr<UButton> ShowAllImageButton;
+	
+	
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidget), Category = "UI")
 	TObjectPtr<UTextBlock> TemplateDetail;
 	
 	
@@ -74,6 +86,9 @@ protected:
 	void OnPreviousPageClicked();
 	UFUNCTION()
 	void OnNextPageClicked();
+	
+	UFUNCTION()
+	void OnShowAllImageClicked();
 	
 public:
 	UFUNCTION(BlueprintCallable)

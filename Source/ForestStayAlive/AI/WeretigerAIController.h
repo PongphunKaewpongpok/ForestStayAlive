@@ -3,20 +3,22 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "AIController.h"
+#include "ForestStayAlive/AI/BaseAIController.h"
 #include "WeretigerAIController.generated.h"
 
 /**
  * 
  */
 UCLASS()
-class FORESTSTAYALIVE_API AWeretigerAIController : public AAIController
+class FORESTSTAYALIVE_API AWeretigerAIController : public ABaseAIController
 {
 	GENERATED_BODY()
 	
-protected:
-	virtual void OnPossess(APawn* InPawn) override;
+	FTimerHandle FormChangedTimerHandle;
 	
-	UPROPERTY(EditDefaultsOnly)
-	UBehaviorTree* BehaviorTree;
+protected:
+	virtual void OnTargetSensed(AActor* Actor, FAIStimulus Stimulus) override;
+	
+public:
+	void FormChangedEvent(); 
 };

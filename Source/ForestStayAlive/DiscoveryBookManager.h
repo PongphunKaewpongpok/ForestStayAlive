@@ -18,6 +18,9 @@ class FORESTSTAYALIVE_API UDiscoveryBookManager : public UGameInstanceSubsystem
 {
 	GENERATED_BODY()
 	
+	UPROPERTY()
+	TObjectPtr<UMySaveGame> SaveData;
+	
 public:
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 
@@ -49,16 +52,15 @@ public:
 	
 	UFUNCTION(BlueprintCallable, Category = "Discovery Book")
 	int32 GetDiscoveryDataSize(const FName Category) const;
+	
+	UMySaveGame* GetSaveData() const { return SaveData; }
 
 private:
 	UPROPERTY(EditDefaultsOnly, Category = "Discovery Book")
 	TArray<TSoftObjectPtr<UDiscoveryBookData>> PlantsDiscoveryDataAsset;
 	UPROPERTY(EditDefaultsOnly, Category = "Discovery Book")
 	TArray<TSoftObjectPtr<UDiscoveryBookData>> AnimalsDiscoveryDataAsset;
-
-	UPROPERTY()
-	TObjectPtr<UMySaveGame> SaveData;
-
+	
 	void LoadDiscoveryBook();
 
 	FDiscoveryBookEntryProgress* FindOrAddEntry(FName DiscoveryID);

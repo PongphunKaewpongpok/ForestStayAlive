@@ -3,11 +3,11 @@
 
 #include "AttributeComponent.h"
 
-#include "ForestStayAlivePlayerController.h"
-#include "ForestStayAliveCharacter.h"
+#include "ForestStayAlive/ForestStayAlivePlayerController.h"
+#include "ForestStayAlive/ForestStayAliveCharacter.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
-#include "UI/MainUIWidget.h"
+#include "ForestStayAlive/UI/MainUIWidget.h"
 
 // Sets default values for this component's properties
 UAttributeComponent::UAttributeComponent()

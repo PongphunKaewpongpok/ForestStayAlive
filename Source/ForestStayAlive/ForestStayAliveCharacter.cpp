@@ -3,9 +3,13 @@
 
 #include "ForestStayAliveCharacter.h"
 
-#include "AttributeComponent.h"
+#include "ForestStayAlive/Components/AttributeComponent.h"
 #include "ForestStayAlivePlayerController.h"
+#include "WeretigerCharacter.h"
 #include "Camera/CameraComponent.h"
+#include "Components/CapsuleComponent.h"
+#include "GameFramework/CharacterMovementComponent.h"
+#include "Kismet/KismetMathLibrary.h"
 
 void AForestStayAliveCharacter::PossessedBy(AController* NewController)
 {
@@ -15,6 +19,47 @@ void AForestStayAliveCharacter::PossessedBy(AController* NewController)
 	if (!IsValid(PC)) return;
 	
 	PC->ForestStayAliveCharacter = this;
+}
+
+void AForestStayAliveCharacter::GotExecuted(AWeretigerCharacter* Weretiger)
+{
+	if (!Weretiger) return;
+	
+	APlayerController* PC = Cast<APlayerController>(GetController());
+	if (!IsValid(PC)) return;
+	
+	
+	GetCharacterMovement()->StopMovementImmediately();
+	SetCanJump(false);
+	PC->SetIgnoreMoveInput(true);
+	GetCharacterMovement()->DisableMovement();
+	GetCharacterMovement()->GravityScale = 0.0f;
+	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	
+	
+	
+	FVector Start = GetActorLocation();
+	FVector TargetLocation = Weretiger->GetActorLocation();
+
+	FRotator LookAtRotation = UKismetMathLibrary::FindLookAtRotation(
+		Start,
+		TargetLocation
+	);
+
+	SetActorRotation(FRotator(
+		0.f,
+		LookAtRotation.Yaw,
+		0.f
+	));
+	
+	
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if (!AnimInstance) return;
+	
+	if (DeathAnimation)
+	{
+		AnimInstance->Montage_Play(DeathAnimation);
+	}
 }
 
 // Sets default values
@@ -51,6 +96,20 @@ void AForestStayAliveCharacter::SetupPlayerInputComponent(UInputComponent* Playe
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 
 }
+
+void AForestStayAliveCharacter::SetCanJump(bool CanJump)
+{
+	bCanJump = CanJump;
+}
+
+void AForestStayAliveCharacter::Jump()
+{
+	if (!bCanJump) { return; }
+	
+	Super::Jump();
+}
+
+
 
 void AForestStayAliveCharacter::SetTargetFOV(const float FOV)
 {

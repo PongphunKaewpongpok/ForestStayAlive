@@ -29,17 +29,21 @@ class FORESTSTAYALIVE_API UMySaveGame : public USaveGame
 	TMap<FString, FPhotoData> PhotosData;
 
 public:
+    static const FString SaveSlotName;
+    static UMySaveGame* LoadSaveGame();
+    bool SaveGame();
 
-	UFUNCTION(BlueprintCallable, Category = "Save Game")
-	TMap<FString, FPhotoData> GetPhotosData() const;
+    void AddPhotoData(
+        const FString& Name,
+        const FString& FilePath
+    );
 
-	UFUNCTION(BlueprintCallable, Category = "Save Game")
-	void AddPhotoData(const FString& Name, const FString& FilePath);
+    const FPhotoData* FindPhotoData(const FString& Name) const;
+    const TMap<FString, FPhotoData>& GetPhotosData() const
+    {
+        return PhotosData;
+    }
 
-	UFUNCTION(BlueprintCallable, Category = "Save Game")
-	bool SaveGame();
-
-	// Discovery Book Progress
-	UPROPERTY(SaveGame, BlueprintReadWrite, Category = "Discovery Book")
-	TArray<FDiscoveryBookEntryProgress> Entries;
+    UPROPERTY()
+    TArray<FDiscoveryBookEntryProgress> Entries;
 };

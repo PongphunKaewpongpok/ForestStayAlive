@@ -9,6 +9,14 @@
 #include "Components/Button.h"
 #include "ForestStayAlive/DiscoveryBookManager.h"
 #include "ForestStayAlive/DataAssets/DiscoveryBookData.h"
+#include "ForestStayAlive/MySaveGame.h"
+#include "Components/Image.h"
+#include "Engine/Texture2D.h"
+#include "Misc/FileHelper.h"
+#include "Misc/Paths.h"
+#include "IImageWrapper.h"
+#include "IImageWrapperModule.h"
+#include "Modules/ModuleManager.h"
 
 void UTheDiscoveryBookWidget::ClearDetailBoxes()
 {
@@ -85,10 +93,169 @@ void UTheDiscoveryBookWidget::NativeConstruct()
 		&UTheDiscoveryBookWidget::OnAnimalsButtonClicked
 	);
 	
+	ShowAllImageButton->OnClicked.AddDynamic(
+		this,
+		&UTheDiscoveryBookWidget::OnShowAllImageClicked
+	);
+	
 	
 	UpdatePage();
 }
 
+void UTheDiscoveryBookWidget::UpdateCaptureImage(const FString& DiscoveryID)
+{
+    if (!IsValid(CaptureImage)) return;
+
+    if (!IsValid(DiscoveryBookManager))
+    {
+        if (LockImageTexture) CaptureImage->SetBrushFromTexture(LockImageTexture);
+        return;
+    }
+
+    UMySaveGame* SaveGame = DiscoveryBookManager->GetSaveData();
+
+    if (!IsValid(SaveGame))
+    {
+        if (LockImageTexture) CaptureImage->SetBrushFromTexture(LockImageTexture);
+        return;
+    }
+	
+	
+	
+    const FPhotoData* PhotoData = SaveGame->FindPhotoData(DiscoveryID);
+
+    if (!PhotoData || PhotoData->FilePaths.IsEmpty())
+    {
+        if (LockImageTexture) CaptureImage->SetBrushFromTexture(LockImageTexture);
+        return;
+    }
+
+    FString FilePath = PhotoData->FilePaths[0];
+
+    if (FPaths::IsRelative(FilePath))
+    {
+        FilePath = FPaths::Combine(
+            FPaths::ScreenShotDir(),
+            FilePath
+        );
+    }
+
+    if (!FPaths::FileExists(FilePath))
+    {
+        if (LockImageTexture) CaptureImage->SetBrushFromTexture(LockImageTexture);
+        return;
+    }
+
+    TArray<uint8> CompressedData;
+    if (!FFileHelper::LoadFileToArray(CompressedData, *FilePath))
+    {
+        if (LockImageTexture) CaptureImage->SetBrushFromTexture(LockImageTexture);
+        return;
+    }
+
+    if (CompressedData.IsEmpty())
+    {
+        if (LockImageTexture) CaptureImage->SetBrushFromTexture(LockImageTexture);
+        return;
+    }
+
+    IImageWrapperModule& ImageWrapperModule =
+        FModuleManager::LoadModuleChecked<IImageWrapperModule>(
+            FName("ImageWrapper")
+        );
+
+    TSharedPtr<IImageWrapper> ImageWrapper = ImageWrapperModule.CreateImageWrapper(EImageFormat::PNG);
+
+    if (!ImageWrapper.IsValid())
+    {
+        if (LockImageTexture) CaptureImage->SetBrushFromTexture(LockImageTexture);
+        return;
+    }
+
+    if (!ImageWrapper->SetCompressed(
+        CompressedData.GetData(),
+        CompressedData.Num()
+    ))
+    {
+        if (LockImageTexture) CaptureImage->SetBrushFromTexture(LockImageTexture);
+        return;
+    }
+
+    TArray64<uint8> RawData;
+
+    if (!ImageWrapper->GetRaw(
+        ERGBFormat::BGRA,
+        8,
+        RawData
+    ))
+    {
+        if (LockImageTexture) CaptureImage->SetBrushFromTexture(LockImageTexture);
+        return;
+    }
+
+    const int32 Width = ImageWrapper->GetWidth();
+    const int32 Height = ImageWrapper->GetHeight();
+
+    if (Width <= 0 || Height <= 0 || RawData.IsEmpty())
+    {
+        if (LockImageTexture) CaptureImage->SetBrushFromTexture(LockImageTexture);
+        return;
+    }
+
+    UTexture2D* Texture = UTexture2D::CreateTransient(
+        Width,
+        Height,
+        PF_B8G8R8A8
+    );
+
+    if (!IsValid(Texture))
+    {
+        if (LockImageTexture) CaptureImage->SetBrushFromTexture(LockImageTexture);
+        return;
+    }
+
+    FTexturePlatformData* PlatformData = Texture->GetPlatformData();
+
+    if (!PlatformData || PlatformData->Mips.IsEmpty())
+    {
+        if (LockImageTexture) CaptureImage->SetBrushFromTexture(LockImageTexture);
+        return;
+    }
+
+    FTexture2DMipMap& Mip = PlatformData->Mips[0];
+
+    void* TextureData = Mip.BulkData.Lock(LOCK_READ_WRITE);
+
+    if (!TextureData)
+    {
+        Mip.BulkData.Unlock();
+        if (LockImageTexture) CaptureImage->SetBrushFromTexture(LockImageTexture);
+        return;
+    }
+
+    const int64 ExpectedSize = static_cast<int64>(Width) * Height * 4;
+
+    if (RawData.Num() != ExpectedSize)
+    {
+        Mip.BulkData.Unlock();
+        if (LockImageTexture) CaptureImage->SetBrushFromTexture(LockImageTexture);
+        return;
+    }
+
+    FMemory::Memcpy(
+        TextureData,
+        RawData.GetData(),
+        ExpectedSize
+    );
+
+    Mip.BulkData.Unlock();
+
+    Texture->SRGB = true;
+    Texture->UpdateResource();
+
+    CaptureTexture = Texture;
+    CaptureImage->SetBrushFromTexture(CaptureTexture);
+}
 
 void UTheDiscoveryBookWidget::OnPlantsButtonClicked()
 {
@@ -114,7 +281,7 @@ void UTheDiscoveryBookWidget::UpdatePage()
 
 	if (!Data) return;
 
-	const FName DiscoveryID = Data->GetFName();
+	const FName DiscoveryID = Data->DiscoveryID;
 
 	const bool bNameUnlocked = DiscoveryBookManager->IsDiscoveryNameUnlocked(DiscoveryID);
 	
@@ -122,6 +289,16 @@ void UTheDiscoveryBookWidget::UpdatePage()
 	{
 		DiscoveryName->SetText(bNameUnlocked ? Data->Name : FText::FromString(TEXT("???")));
 	}
+	
+	if (bNameUnlocked)
+	{
+		UpdateCaptureImage(DiscoveryID.ToString());
+	}
+	else if (CaptureImage)
+	{
+		if (LockImageTexture) CaptureImage->SetBrushFromTexture(LockImageTexture);
+	}
+	
 	
 	
 	UpdateDetailSection(
@@ -179,4 +356,9 @@ void UTheDiscoveryBookWidget::OnNextPageClicked()
 	);
 	
 	UpdatePage();
+}
+
+void UTheDiscoveryBookWidget::OnShowAllImageClicked()
+{
+	// To Be Continue...
 }

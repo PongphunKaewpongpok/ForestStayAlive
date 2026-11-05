@@ -31,11 +31,16 @@ protected:
 	UInputAction* RightClickAction;
 	UPROPERTY(EditAnywhere, Category="Input")
 	UInputAction* LeftClickAction;
+	UPROPERTY(EditAnywhere, Category="Input")
+	UInputAction* DiscoveryBookAction;
 
 	void OnRightClickStarted(const FInputActionValue& Value);
 	
 	void OnLeftClickHold(const FInputActionValue& Value);
 	void OnLeftClickCompleted(const FInputActionValue& Value);
+	
+	void OnDiscoveryBookStarted(const FInputActionValue& Value);
+	
 public:
 	virtual void Tick(float DeltaSeconds) override;
 	

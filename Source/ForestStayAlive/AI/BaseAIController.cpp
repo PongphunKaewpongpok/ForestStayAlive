@@ -26,16 +26,18 @@ ABaseAIController::ABaseAIController()
 	SightConfig->PeripheralVisionAngleDegrees = 60.f;
 	SightConfig->DetectionByAffiliation.bDetectNeutrals = true;
 	AAIController::GetPerceptionComponent()->ConfigureSense(*SightConfig);
-	
+
+
 	HearingConfig = CreateDefaultSubobject<UAISenseConfig_Hearing>(TEXT("Hearing"));
 	HearingConfig->HearingRange = 3000.f;
 	HearingConfig->SetMaxAge(8.f);
-	
+
 	HearingConfig->DetectionByAffiliation.bDetectEnemies = true;
 	HearingConfig->DetectionByAffiliation.bDetectNeutrals = true;
 	HearingConfig->DetectionByAffiliation.bDetectFriendlies = true;
 	AAIController::GetPerceptionComponent()->ConfigureSense(*HearingConfig);
-	
+
+
 	DamageConfig = CreateDefaultSubobject<UAISenseConfig_Damage>(TEXT("Damage"));
 	DamageConfig->SetMaxAge(8.f);
 	AAIController::GetPerceptionComponent()->ConfigureSense(*DamageConfig);
@@ -73,7 +75,7 @@ void ABaseAIController::Tick(float DeltaTime)
 void ABaseAIController::OnTargetSensed(AActor* Actor, FAIStimulus Stimulus)
 {
 	UBlackboardComponent* BB = GetBlackboardComponent();
-	if (BB == nullptr || Actor == nullptr) { return; }
+	if (BB == nullptr || Actor == nullptr) return;
 	
 	const TSubclassOf<UAISense> Sense = UAIPerceptionSystem::GetSenseClassForStimulus(this, Stimulus);
 	

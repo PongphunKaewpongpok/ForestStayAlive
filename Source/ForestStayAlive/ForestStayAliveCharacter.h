@@ -6,6 +6,7 @@
 #include "GameFramework/Character.h"
 #include "ForestStayAliveCharacter.generated.h"
 
+class AWeretigerCharacter;
 class UCameraComponent;
 class UMainUIWidget;
 class UAttributeComponent;
@@ -22,6 +23,19 @@ protected:
     UPROPERTY(BlueprintReadWrite)
 	float TargetFOV = 70.0f;
 	
+	UPROPERTY(EditAnywhere, Category="Animation")
+	UAnimMontage* DeathAnimation;
+	
+	UPROPERTY(EditDefaultsOnly, Category = "Footstep")
+	TMap<TEnumAsByte<EPhysicalSurface>, TObjectPtr<USoundBase>> FootstepSounds;
+	UPROPERTY(EditDefaultsOnly, Category = "Footstep")
+	TObjectPtr<USoundBase> DefaultFootstepSound;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sound")
+	TObjectPtr<USoundAttenuation> FootstepSoundAttenuation;
+	UPROPERTY(EditDefaultsOnly, Category = "Footstep")
+	float RunNoiseLoudness = 1.5f;
+	UPROPERTY(EditDefaultsOnly, Category = "Footstep")
+	float RunNoiseRange = 1800.f;
 	
 public:
 	// Sets default values for this character's properties
@@ -32,6 +46,9 @@ public:
 	virtual void PossessedBy(AController* NewController) override;
 	
 	
+	void GotExecuted(AWeretigerCharacter* Weretiger);
+	
+	
 
 public:	
 	// Called every frame
@@ -40,6 +57,15 @@ public:
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
+	UPROPERTY(EditAnywhere, Category="Jump")
+	bool bCanJump = true;
+	
+	UFUNCTION(BlueprintCallable, Category="Jump")
+	void SetCanJump(bool CanJump);
+	
+	virtual void Jump() override;
+	
+	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	TObjectPtr<UAttributeComponent> AttributeComponent;
 	
