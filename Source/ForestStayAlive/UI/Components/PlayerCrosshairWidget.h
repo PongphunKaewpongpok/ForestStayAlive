@@ -7,6 +7,16 @@
 #include "PlayerCrosshairWidget.generated.h"
 
 class URoundProgressBarWidget;
+
+UENUM(BlueprintType)
+enum class ECrosshairType : uint8
+{
+	Normal,
+	Interactable,
+	Interacting,
+};
+
+
 /**
  * 
  */
@@ -35,5 +45,5 @@ public:
 	float InteractProgress = 0.0f;
 	
 	UFUNCTION(BlueprintCallable)
-	void SetCrosshairType(const FText& NewType);
+	void SetCrosshairType(const ECrosshairType NewType);
 };

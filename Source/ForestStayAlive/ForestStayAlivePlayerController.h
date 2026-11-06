@@ -13,6 +13,17 @@ struct FInputActionValue;
 class UInputAction;
 class UCameraWidget;
 class UMainUIWidget;
+
+
+
+UENUM(BlueprintType)
+enum class ECursorEventType : uint8
+{
+	GameOnly,
+	GameAndUI_DoNotLock,
+	UIOnly,
+};
+
 /**
  * 
  */
@@ -21,6 +32,7 @@ class FORESTSTAYALIVE_API AForestStayAlivePlayerController : public APlayerContr
 {
 	GENERATED_BODY()
 
+	void SetLockCursor(const bool bStatus, const ECursorEventType CursorEvent);
 	
 protected:
 	virtual void BeginPlay() override;
@@ -71,3 +83,4 @@ public:
 	
 	
 };
+

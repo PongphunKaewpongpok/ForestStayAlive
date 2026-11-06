@@ -24,17 +24,17 @@ void UPlayerCrosshairWidget::NativeTick(const FGeometry& MyGeometry, float InDel
 	}
 }
 
-void UPlayerCrosshairWidget::SetCrosshairType(const FText& NewType)
+void UPlayerCrosshairWidget::SetCrosshairType(const ECrosshairType NewType)
 {
-	if (NewType.EqualTo(FText::FromString(TEXT("Normal"))))
+	if (NewType == ECrosshairType::Normal)
 	{
 		Crosshair->SetIconImage(Crosshair_Normal);
 	}
-	else if (NewType.EqualTo(FText::FromString(TEXT("Interactable"))))
+	else if (NewType == ECrosshairType::Interactable)
 	{
 		Crosshair->SetIconImage(Crosshair_Interactable);
 	}
-	else if (NewType.EqualTo(FText::FromString(TEXT("Interacting"))))
+	else if (NewType == ECrosshairType::Interacting)
 	{
 		Crosshair->SetIconImage(Crosshair_Interacting);
 	}

@@ -18,6 +18,33 @@
 #include "IImageWrapperModule.h"
 #include "Modules/ModuleManager.h"
 
+int32 UTheDiscoveryBookWidget::GetPageIndex()
+{
+	return PageIndices.FindOrAdd(Category, 0);
+}
+
+void UTheDiscoveryBookWidget::IncrementPageIndex()
+{
+	PageIndices.FindOrAdd(Category, 0)++;
+	
+	PageIndices.FindOrAdd(Category, 0) = FMath::Clamp(
+		PageIndices.FindOrAdd(Category, 0),
+		0,
+		DiscoveryBookManager->GetDiscoveryDataSize(Category)-1
+	);
+}
+
+void UTheDiscoveryBookWidget::DecrementPageIndex()
+{
+	PageIndices.FindOrAdd(Category, 0)--;
+	
+	PageIndices.FindOrAdd(Category, 0) = FMath::Clamp(
+		PageIndices.FindOrAdd(Category, 0),
+		0,
+		DiscoveryBookManager->GetDiscoveryDataSize(Category)-1
+	);
+}
+
 void UTheDiscoveryBookWidget::ClearDetailBoxes()
 {
 	if (DiscoveryName) DiscoveryName->SetText(FText::FromString(TEXT("???")));
@@ -277,7 +304,7 @@ void UTheDiscoveryBookWidget::UpdatePage()
 
 	ClearDetailBoxes();
 
-	UDiscoveryBookData* Data = DiscoveryBookManager->GetDiscoveryDataByIndex(Category, PageIndex);
+	UDiscoveryBookData* Data = DiscoveryBookManager->GetDiscoveryDataByIndex(Category, GetPageIndex());
 
 	if (!Data) return;
 
@@ -334,12 +361,7 @@ void UTheDiscoveryBookWidget::OnPreviousPageClicked()
 {
 	if (!DiscoveryBookManager) return;
 	
-	PageIndex--;
-	PageIndex = FMath::Clamp(
-		PageIndex,
-		0,
-		DiscoveryBookManager->GetDiscoveryDataSize(Category)-1
-	);
+	DecrementPageIndex();
 	
 	UpdatePage();
 }
@@ -348,12 +370,7 @@ void UTheDiscoveryBookWidget::OnNextPageClicked()
 {
 	if (!DiscoveryBookManager) return;
 	
-	PageIndex++;
-	PageIndex = FMath::Clamp(
-		PageIndex,
-		0,
-		DiscoveryBookManager->GetDiscoveryDataSize(Category)-1
-	);
+	IncrementPageIndex();
 	
 	UpdatePage();
 }

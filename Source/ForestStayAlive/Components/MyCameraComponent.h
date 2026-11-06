@@ -15,13 +15,13 @@ class FORESTSTAYALIVE_API UMyCameraComponent : public UActorComponent
 public:	
 	// Sets default values for this component's properties
 	UMyCameraComponent();
+	
+	virtual void BeginPlay() override;
 
 	UFUNCTION(BlueprintCallable)
 	void TakeAPhoto();
 
 protected:
-	// Called when the game starts
-	virtual void BeginPlay() override;
 
 public:	
 	// Called every frame

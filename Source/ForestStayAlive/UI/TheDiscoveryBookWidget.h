@@ -26,7 +26,17 @@ class FORESTSTAYALIVE_API UTheDiscoveryBookWidget : public UUserWidget
 	
 	
 	FName Category = FName("Plants");
-	int32 PageIndex = 0;
+	
+	UPROPERTY()
+	TMap<FName, int32> PageIndices =
+	{
+		{ FName("Plants"), 0 },
+		{ FName("Animals"), 0 }
+	};
+	int32 GetPageIndex();
+	void IncrementPageIndex();
+	void DecrementPageIndex();
+	
 	
 	void ClearDetailBoxes();
 	void AddDetailText(UVerticalBox* TargetBox, const FText& Text);

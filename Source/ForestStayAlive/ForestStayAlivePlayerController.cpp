@@ -12,6 +12,39 @@
 #include "UI/Components/PlayerCrosshairWidget.h"
 #include "UI/TheDiscoveryBookWidget.h"
 
+void AForestStayAlivePlayerController::SetLockCursor(const bool bStatus, const ECursorEventType CursorEvent)
+{
+	if (bStatus)
+	{
+		int32 ViewportWidth = 0;
+		int32 ViewportHeight = 0;
+		GetViewportSize(ViewportWidth, ViewportHeight);
+
+		SetMouseLocation(
+			ViewportWidth/2,
+			ViewportHeight/2
+		);
+	
+		PlayerCrosshairWidget->SetPositionInViewport(
+			FVector2D(ViewportWidth/2, ViewportHeight/2),
+			true
+		);
+	}
+	
+	if (CursorEvent == ECursorEventType::GameOnly) SetInputMode(FInputModeGameOnly());
+	if (CursorEvent == ECursorEventType::UIOnly) SetInputMode(FInputModeUIOnly());
+	if (CursorEvent == ECursorEventType::GameAndUI_DoNotLock)
+	{
+		FInputModeGameAndUI InputMode;
+		InputMode.SetLockMouseToViewportBehavior(
+			EMouseLockMode::DoNotLock
+		);
+		InputMode.SetHideCursorDuringCapture(false);
+		
+		SetInputMode(InputMode);
+	}
+}
+
 void AForestStayAlivePlayerController::BeginPlay()
 {
 	Super::BeginPlay();
@@ -114,7 +147,8 @@ void AForestStayAlivePlayerController::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 	
-	if (PlayerCrosshairWidget && PlayerCrosshairWidget->InteractProgress == 1.0f)
+	if ((PlayerCrosshairWidget && PlayerCrosshairWidget->InteractProgress == 1.0f ||	// Hold Interact Success
+		(TheDiscoveryBookWidget && TheDiscoveryBookWidget->IsInViewport())))			// Open The Discovery Book
 	{
 		float MouseX;
 		float MouseY;
@@ -158,7 +192,7 @@ void AForestStayAlivePlayerController::OnLeftClickHold(const FInputActionValue& 
 		
 	if (PlayerCrosshairWidget)
 	{
-		PlayerCrosshairWidget->SetCrosshairType(FText::FromString(TEXT("Interacting")));
+		PlayerCrosshairWidget->SetCrosshairType(ECrosshairType::Interacting);
 	}
 	
 	if (PlayerCrosshairWidget->InteractProgress != 1.0f)
@@ -174,38 +208,21 @@ void AForestStayAlivePlayerController::OnLeftClickHold(const FInputActionValue& 
 	}
 	
 	
-	
-	FInputModeGameAndUI InputMode;
-	InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
-	SetInputMode(InputMode);
+	SetLockCursor(false, ECursorEventType::GameAndUI_DoNotLock);
 	
 	PlayerCrosshairWidget->bIsInteracting = true;
 }
 
 void AForestStayAlivePlayerController::OnLeftClickCompleted(const FInputActionValue& Value)
 {
+	if (TheDiscoveryBookWidget && TheDiscoveryBookWidget->IsInViewport()) return;
+	
 	if (PlayerCrosshairWidget)
 	{
-		PlayerCrosshairWidget->SetCrosshairType(FText::FromString(TEXT("Interactable")));
+		PlayerCrosshairWidget->SetCrosshairType(ECrosshairType::Interactable);
 	}
 	
-	int32 ViewportWidth = 0;
-	int32 ViewportHeight = 0;
-	GetViewportSize(ViewportWidth, ViewportHeight);
-
-	SetMouseLocation(
-		ViewportWidth/2,
-		ViewportHeight/2
-	);
-	
-	PlayerCrosshairWidget->SetPositionInViewport(
-		FVector2D(ViewportWidth/2, ViewportHeight/2),
-		true
-	);
-	
-	
-	
-	SetInputMode(FInputModeGameOnly());
+	SetLockCursor(true, ECursorEventType::GameOnly);
 	
 	
 	PlayerCrosshairWidget->bIsInteracting = false;
@@ -222,9 +239,15 @@ void AForestStayAlivePlayerController::OnDiscoveryBookStarted(const FInputAction
 	if (TheDiscoveryBookWidget->IsInViewport())
 	{
 		TheDiscoveryBookWidget->RemoveFromViewport();
+		
+		SetLockCursor(true, ECursorEventType::GameOnly);
+		PlayerCrosshairWidget->SetCrosshairType(ECrosshairType::Normal);
 	}
 	else
 	{
 		TheDiscoveryBookWidget->AddToViewport();
+		
+		SetLockCursor(false, ECursorEventType::GameAndUI_DoNotLock);
+		PlayerCrosshairWidget->SetCrosshairType(ECrosshairType::Normal);
 	}
 }

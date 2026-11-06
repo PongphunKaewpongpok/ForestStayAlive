@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GameFramework/Character.h"
+#include "BaseAnimalCharacter.h"
 #include "WeretigerCharacter.generated.h"
 
 class AForestStayAliveCharacter;
@@ -11,7 +11,7 @@ class AForestStayAliveCharacter;
  * 
  */
 UCLASS()
-class FORESTSTAYALIVE_API AWeretigerCharacter : public ACharacter
+class FORESTSTAYALIVE_API AWeretigerCharacter : public ABaseAnimalCharacter
 {
 	GENERATED_BODY()
 	
